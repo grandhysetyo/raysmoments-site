@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Booking extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'order_code', 'client_id', 'package_id', 'photographer_id', 'event_date', 'event_location', 'event_city', 'session_1_time','session_2_time','status', 'package_price','photographer_rate', 'grand_total', 'addons_total', 'notes'
+    ];
+
+    public function user(): BelongsTo
+    {        
+        return $this->belongsTo(User::class, 'client_id'); 
+    }
+
+    public function photographer()
+    {
+        return $this->belongsTo(User::class, 'photographer_id');
+    }
+
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
+    }
+    
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+    public function bookingAddons(): HasMany
+    {
+        return $this->hasMany(BookingAddon::class);
+    }
+
+    public function addons()
+    {
+        return $this->belongsToMany(Addon::class, 'booking_addons')
+                    ->withPivot('quantity', 'price')
+                    ->withTimestamps();
+    }
+
+    public function projectPhotos()
+    {
+        return $this->hasMany(ProjectPhoto::class);
+    }
+}
+

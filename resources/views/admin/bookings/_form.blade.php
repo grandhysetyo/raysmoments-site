@@ -63,9 +63,12 @@
     <div>
         <label for="package_id" class="block text-sm font-medium text-gray-700">Pilih Paket</label>
         <select name="package_id" id="package_id" class="mt-1 w-full border border-gray-300 rounded-md" required>
-            <option value="" data-price="0">-- Pilih Paket --</option>
+            <option value="" data-price="0" data-duration="0">-- Pilih Paket --</option>
             @foreach($packages as $package)
-                <option value="{{ $package->id }}" data-price="{{ $package->price }}" {{ old('package_id', $booking->package_id) == $package->id ? 'selected' : '' }}>
+                <option value="{{ $package->id }}" 
+                        data-price="{{ $package->price }}" 
+                        data-duration="{{ $package->duration_hours ?? 1 }}" {{-- BARU: Asumsi ada atribut 'duration' --}}
+                        {{ old('package_id', $booking->package_id) == $package->id ? 'selected' : '' }}>
                     {{ $package->name }} (Rp {{ number_format($package->price) }})
                 </option>
             @endforeach
@@ -76,6 +79,17 @@
         <label for="event_date" class="block text-sm font-medium text-gray-700">Tanggal Acara</label>
         <input type="date" name="event_date" id="event_date" value="{{ old('event_date', $booking->event_date) }}" class="mt-1 w-full border border-gray-300 rounded-md" required>
         @error('event_date')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+    </div>
+    <div>
+        <label for="session_1_time" class="block text-sm font-medium text-gray-700">Waktu Sesi 1</label>
+        <input type="time" name="session_1_time" id="session_1_time" value="{{ old('session_1_time', $booking->session_1_time) }}" class="mt-1 w-full border border-gray-300 rounded-md" required>
+        @error('session_1_time')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+    </div>
+    
+    <div id="session_2_container" style="display:none;">
+        <label for="session_2_time" class="block text-sm font-medium text-gray-700">Waktu Sesi 2</label>
+        <input type="time" name="session_2_time" id="session_2_time" value="{{ old('session_2_time', $booking->session_2_time) }}" class="mt-1 w-full border border-gray-300 rounded-md">
+        @error('session_2_time')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
     </div>
     
     <div>

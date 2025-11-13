@@ -43,16 +43,19 @@ Route::post('/register', [RegisterController::class, 'store'])->middleware('gues
 Route::get('bookings', [BookingController::class,'index'])->name('bookings.index');
 Route::post('bookings', [BookingController::class,'store'])->name('bookings.store');
 Route::get('bookings/{booking}', [BookingController::class,'show'])->name('bookings.show');
-Route::post('/bookings/{booking}/request-change', [BookingChangeRequestController::class, 'store'])
-    ->name('client.bookings.request_change');
+
+// Permintaan Perubahan
+Route::get('/bookings/{order_code}/request-change', [BookingChangeRequestController::class, 'show'])
+    ->name('request_change.show');
+Route::post('/bookings/{order_code}/request-change', [BookingChangeRequestController::class, 'store'])
+    ->name('request_change.store');
 
 // Tracking status
-Route::get('/track', [TrackingController::class, 'index'])->name('client.tracking.index');
-Route::get('/track/{order_code}', [TrackingController::class, 'show'])->name('client.tracking.show');
+Route::get('/track', [TrackingController::class, 'index'])->name('tracking.index');
+Route::get('/track/{order_code}', [TrackingController::class, 'show'])->name('tracking.show');
 
 // Upload pembayaran
-Route::get('payments/upload/{booking}', [PaymentController::class,'create'])->name('payments.create');
-Route::post('payments/upload/{booking}', [PaymentController::class,'store'])->name('payments.store');
+Route::post('payments/upload/{order_code}', [PaymentController::class,'store'])->name('payments.store');
 
 
 /*

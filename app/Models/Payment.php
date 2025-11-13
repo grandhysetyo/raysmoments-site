@@ -13,7 +13,7 @@ class Payment extends Model
     protected $fillable = [
         'booking_id',
         'amount',
-        'proof_of_payment_url',
+        'proof_url',
         'status', // e.g., 'Pending', 'Verified', 'Rejected'
         'payment_type', // e.g., 'DP', 'Final Payment'
         'verified_by', // user_id yang memverifikasi (opsional)

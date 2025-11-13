@@ -37,6 +37,8 @@ class BookingController extends Controller
             // --- Data Booking ---
             'package_id' => 'required|exists:packages,id',
             'event_date' => 'required|date|after_or_equal:today',
+            'session_1_time' => 'required|date_format:H:i',
+            'session_2_time' => 'nullable|date_format:H:i',
             'event_location' => 'required|string|max:255',
             'event_city' => 'required|string|max:255',
             
@@ -90,6 +92,8 @@ class BookingController extends Controller
                 'addons_total' => $addonsTotal, 
                 'grand_total' => $grandTotalFinal, 
                 'event_date' => $validatedData['event_date'],
+                'session_1_time' => $validatedData['session_1_time'],
+                'session_2_time' => $validatedData['session_2_time'] ?? null,
                 'event_location' => $validatedData['event_location'],
                 'event_city' => $validatedData['event_city'],
                 'status' => 'Awaiting DP',
@@ -118,7 +122,7 @@ class BookingController extends Controller
 
             // REDIRECTION: Arahkan ke link tracking/checkout menggunakan order_code
             // Anda harus membuat route client.tracking dengan parameter order_code
-            return redirect()->route('client.tracking', $booking->order_code) 
+            return redirect()->route('tracking.show', $booking->order_code) 
                              ->with('success', 'Pemesanan berhasil dibuat! Silakan cek email Anda untuk detail pelacakan.');
 
         } catch (\Exception $e) {

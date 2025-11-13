@@ -10,28 +10,82 @@ use Illuminate\Support\Facades\Storage;
 
 class PaymentController extends Controller
 {
-    public function create(Booking $booking)
+    /**
+     * Menyimpan data pembayaran baru dari modal.
+     */
+    /**
+     * Menyimpan (MENG-UPDATE) data pembayaran dari modal.
+     */
+    public function store(Request $request, $order_code)
     {
-        return view('client.payments.create', compact('booking'));
-    }
+        // 1. Temukan booking berdasarkan order_code
+        $booking = Booking::where('order_code', $order_code)->firstOrFail();
 
-    public function store(Request $request, Booking $booking)
-    {
-        $request->validate([
-            'payment_type'=>'required|in:DP,Final',
-            'file'=>'required|file|mimes:jpg,png,pdf|max:2048'
+        // 2. Validasi input
+        $validated = $request->validate([
+            'payment_type' => 'required|string|in:DP,Final Payment',
+            'amount' => 'required|numeric|min:1',
+            'proof_url' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $path = $request->file('file')->store('payments','public');
+        try {
+            // 3. Temukan data payment yang HARUS di-update
+            //    Kita cari payment yang:
+            //    - Sesuai dengan booking_id
+            //    - Sesuai dengan payment_type (DP atau Final Payment)
+            //    - Statusnya 'Pending' (masih kosong) ATAU 'Rejected' (perlu upload ulang)
+            
+            $paymentToUpdate = Payment::where('booking_id', $booking->id)
+                ->where('payment_type', $validated['payment_type'])
+                ->where(function ($query) {
+                    // Cari yang statusnya Pending TAPI belum ada bukti
+                    $query->where('status', 'Pending') 
+                          ->whereNull('proof_url');
+                    // ATAU cari yang di-reject admin
+                    $query->orWhere('status', 'Rejected'); 
+                })
+                ->orderBy('created_at', 'desc') // Ambil yang paling baru jika ada duplikat
+                ->first();
 
-        Payment::create([
-            'booking_id' => $booking->id,
-            'payment_type' => $request->payment_type,
-            'amount' => $booking->grand_total,
-            'file_url' => $path,
-            'status' => 'Pending',
-        ]);
+            // Jika tidak ditemukan payment yang sesuai (misal: sudah 'Verified')
+            if (!$paymentToUpdate) {
+                // Mungkin payment DP sudah Verified, dan ini adalah upload Final Payment
+                // Coba cari lagi HANYA berdasarkan tipe
+                $paymentToUpdate = Payment::where('booking_id', $booking->id)
+                                ->where('payment_type', $validated['payment_type'])
+                                ->whereNull('proof_url')
+                                ->first();
 
-        return redirect()->route('client.bookings.index')->with('success','Bukti pembayaran berhasil diupload!');
+                // Jika tetap tidak ketemu, berarti ada masalah
+                if (!$paymentToUpdate) {
+                     return back()->with('error', 'Tidak dapat menemukan data tagihan yang sesuai untuk di-update. Silakan hubungi admin.');
+                }
+            }
+            
+            // 4. Proses upload file
+            $path = $request->file('proof_url')->store('payment_proofs', 'public');
+
+            // 5. UPDATE data payment yang ada
+            $paymentToUpdate->update([
+                'amount' => $validated['amount'],
+                'proof_url' => $path,
+                'status' => 'Pending' // Set (atau set ulang) status ke 'Pending' untuk direview Admin
+            ]);
+
+            // 6. Update status booking
+            if ($booking->status === 'Awaiting DP' || $booking->status === 'Awaiting Final Payment' || $booking->status === 'Pending') {
+                $booking->status = 'Pending'; // Ubah status booking agar tombol upload hilang
+                $booking->save();
+            }
+
+            // 7. Kembalikan ke halaman tracking
+            return redirect()->route('tracking.show', $booking->order_code)
+                             ->with('success', 'Bukti pembayaran berhasil diupload dan sedang menunggu konfirmasi admin.');
+
+        } catch (\Exception $e) {
+            // 8. Jika terjadi error
+            \Log::error('Payment update failed: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat mengupload bukti pembayaran. Silakan coba lagi.');
+        }
     }
 }

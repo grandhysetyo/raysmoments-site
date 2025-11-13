@@ -45,6 +45,8 @@ class AdminBookingController extends Controller
             // --- Data Booking & Payment ---
             'package_id' => 'required|exists:packages,id',
             'event_date' => 'required|date|after_or_equal:today',
+            'session_1_time' => 'required|date_format:H:i',
+            'session_2_time' => 'nullable|date_format:H:i',
             'event_location' => 'required|string|max:255',
             'event_city' => 'required|string|max:255',
             'notes' => 'nullable|string',
@@ -104,6 +106,8 @@ class AdminBookingController extends Controller
                 
                 // --- DATA NON-HARGA ---
                 'event_date' => $validatedData['event_date'],
+                'session_1_time' => $validatedData['session_1_time'],
+                'session_2_time' => $validatedData['session_2_time'] ?? null,
                 'event_location' => $validatedData['event_location'],
                 'event_city' => $validatedData['event_city'],
                 'notes' => $validatedData['notes'],
@@ -185,6 +189,8 @@ class AdminBookingController extends Controller
             // --- Data Booking & Payment ---
             'package_id' => 'required|exists:packages,id',
             'event_date' => 'required|date|after_or_equal:today',
+            'session_1_time' => 'required|date_format:H:i',
+            'session_2_time' => 'nullable|date_format:H:i',
             'event_location' => 'required|string|max:255',
             'event_city' => 'required|string|max:255',
             'notes' => 'nullable|string',
@@ -238,6 +244,8 @@ class AdminBookingController extends Controller
             $booking->update([
                 'package_id' => $validatedData['package_id'],
                 'event_date' => $validatedData['event_date'],
+                'session_1_time' => $validatedData['session_1_time'],
+                'session_2_time' => $validatedData['session_2_time'] ?? null,
                 'event_location' => $validatedData['event_location'],
                 'event_city' => $validatedData['event_city'],
                 'package_price' => $packagePrice, // <-- Harga Package baru

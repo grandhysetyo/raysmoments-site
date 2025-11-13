@@ -11,7 +11,7 @@
         </div>
     @endif
 
-    <form action="{{ route('client.tracking.show', ['order_code' => 'temp']) }}" method="GET" id="tracking-form">
+    <form action="{{ route('tracking.show', ['order_code' => 'temp']) }}" method="GET" id="tracking-form">
         {{-- order_code diisi sementara 'temp', akan diganti oleh JS --}}
         
         <div class="mb-6">

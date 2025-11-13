@@ -42,11 +42,11 @@ class PhotographerProfile extends Model
     /**
      * Profil ini memiliki banyak (hasMany) tarif.
      */
-    public function rates(): HasMany
+    public function rates()
     {
-        // Cek: Apakah nama kolom di tabel 'photographer_rates' yang menunjuk
-        // kembali ke tabel 'photographer_profiles' sudah benar-benar 'photographer_id'?
-        return $this->hasMany(PhotographerRate::class, 'photographer_id', 'id');
+        // Kunci 'photographer_id' di tabel photographer_rates
+        // terhubung ke 'id' di tabel photographer_profiles
+        return $this->hasMany(PhotographerRate::class, 'photographer_id');
     }
 
 }

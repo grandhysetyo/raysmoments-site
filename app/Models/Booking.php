@@ -12,7 +12,33 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = [
-        'order_code', 'client_id', 'package_id', 'photographer_id', 'event_date', 'event_location', 'event_city', 'session_1_time','session_2_time','status', 'package_price','photographer_rate', 'grand_total', 'addons_total', 'notes'
+        'order_code',
+        'client_id',
+        'package_id',
+        'event_date',
+        'event_location',
+        'event_city',
+        'session_1_time',
+        'session_2_time',
+        'photographer_id',
+        'photographer_rate',
+        'photographer_other_costs', 
+        'package_price',
+        'addons_total',
+        'grand_total',
+        'status',
+        'notes',
+    ];
+   
+    protected $casts = [
+        'event_date' => 'date',
+        'session_1_time' => 'datetime:H:i',
+        'session_2_time' => 'datetime:H:i',
+        'package_price' => 'decimal:2',
+        'addons_total' => 'decimal:2',
+        'grand_total' => 'decimal:2',
+        'photographer_rate' => 'decimal:2',
+        'photographer_other_costs' => 'decimal:2', // <-- Tambahan dari migrasi baru
     ];
 
     public function user(): BelongsTo

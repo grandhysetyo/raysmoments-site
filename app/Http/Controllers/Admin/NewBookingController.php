@@ -14,11 +14,9 @@ class NewBookingController extends Controller
      */
     public function index()
     {
-        $targetStatuses = ['Awaiting DP', 'Pending'];
         // Filter booking yang statusnya Awaiting DP
+        $targetStatuses = ['Awaiting DP', 'Pending'];
         $bookings = Booking::whereIn('status', $targetStatuses)
-                            ->where('status', 'Pending')
-                             // Eager Load: package dan user.clientDetails
                             ->with(['package', 'user.clientDetails'])
                             ->latest()
                             ->paginate(10);

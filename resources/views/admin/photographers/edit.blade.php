@@ -35,9 +35,9 @@
 
         {{-- Form untuk MENAMBAH tarif baru --}}
         {{-- CATATAN: 'photographer-rates.store' adalah rute yang perlu Anda buat selanjutnya --}}
-        <form action="{{ route('admin.photographer-rates.store', $photographer->profile->id) }}" method="POST" class="mb-6">
+        <form action="{{ route('admin.photographer-rates.store', $photographer->photographerProfile->id) }}" method="POST" class="mb-6">
             @csrf
-            <input type="hidden" name="photographer_profile_id" value="{{ $photographer->profile->id }}">
+            <input type="hidden" name="photographer_profile_id" value="{{ $photographer->photographerProfile->id }}">
             <h3 class="text-lg font-medium text-gray-900 mb-2">Tambah Tarif Baru</h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
@@ -77,7 +77,7 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse($photographer->profile->rates ?? [] as $rate)
+                    @forelse($photographer->photographerProfile->rates ?? [] as $rate)
                     <tr>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ $rate->city }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">Rp {{ number_format($rate->base_rate, 0, ',', '.') }}</td>

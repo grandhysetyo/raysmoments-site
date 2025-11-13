@@ -3,7 +3,55 @@
 @section('content')
 <div class="max-w-4xl mx-auto p-4 md:p-8 mt-6">
     <h1 class="text-3xl font-extrabold mb-8 text-gray-900 border-b pb-3">Detail Pelacakan Pesanan</h1>
+    {{-- ========================================================= --}}
+    {{-- BAGIAN 1: STATUS TIMELINE --}}
+    {{-- ========================================================= --}}
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-200">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Status Saat Ini:</h2>
+        
+        {{-- Tampilkan Peringatan jika sedang menunggu approval --}}
+        @if($booking->status === 'Awaiting Change Approval')
+        <div class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50" role="alert">
+            <span class="font-medium">Menunggu Persetujuan Admin!</span> Pengajuan perubahan Anda sedang ditinjau.
+        </div>
+        @endif
 
+        {{-- Timeline (Asumsi variabel $timeline dikirim dari Controller) --}}
+        <ol class="relative border-l border-gray-200 dark:border-gray-700">                  
+            @foreach($timeline as $step)
+            <li class="mb-10 ml-6">
+                {{-- BULLET POINT (Warna ditentukan oleh status) --}}
+                <span class="absolute flex items-center justify-center w-6 h-6 rounded-full -left-3 ring-8 ring-white 
+                    @if($step['is_completed']) bg-green-500 @elseif($step['is_active']) bg-indigo-600 @else bg-gray-300 @endif">
+                    
+                    @if($step['is_completed'])
+                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    @elseif($step['is_active'])
+                        <span class="text-white text-xs font-bold">{{ $loop->iteration }}</span>
+                    @endif
+                </span>
+                
+                {{-- KONTEN TIMELINE --}}
+                <h3 class="flex items-center mb-1 text-lg font-semibold text-gray-900
+                    @if($step['is_active']) text-indigo-600 @endif">
+                    {{ $step['label'] }}
+                </h3>
+                
+                @if($step['is_active'])
+                    <p class="mb-4 text-sm font-normal text-gray-500">
+                        Status Terakhir Diperbarui: {{ $booking->updated_at->isoFormat('D MMMM YYYY, HH:mm') }}
+                    </p>
+                @endif
+            </li>
+            @endforeach
+        </ol>
+
+        @if($booking->status === 'Cancelled')
+            <div class="p-4 bg-red-100 text-red-700 border border-red-400 rounded-lg font-semibold mt-6">
+                Pesanan ini telah dibatalkan.
+            </div>
+        @endif
+    </div>
     @if(session('success'))
         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-4">
             {{ session('success') }}

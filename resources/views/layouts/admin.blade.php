@@ -43,7 +43,7 @@
                     Dashboard
                 </a>
 
-                <div x-data="{ open: {{ request()->routeIs('admin.new-books*') || request()->routeIs('admin.new-books*') ? 'true' : 'false' }} }">
+                <div x-data="{ open: {{ request()->routeIs('admin.new-books*') || request()->routeIs('admin.upcoming*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" 
                             class="w-full flex justify-between items-center px-4 py-2.5 rounded-lg transition duration-200 hover:bg-gray-700 hover:text-white">
                         <span class="flex items-center">
@@ -62,9 +62,9 @@
                                   {{ request()->routeIs('admin.new-books*') ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 hover:text-white' }}">
                             New Bookings
                         </a>
-                        <a href="{{ route('admin.addons.index') }}"
+                        <a href="{{ route('admin.upcoming.index') }}"
                            class="block px-4 py-2 rounded-lg text-sm 
-                                  {{ request()->routeIs('admin.new-books*') ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 hover:text-white' }}">
+                                  {{ request()->routeIs('admin.upcoming.index*') ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 hover:text-white' }}">
                             Upcoming Shooting 
                         </a>
                     </div>
@@ -77,7 +77,7 @@
                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     </svg>
-                    Manajemen Pembayaran
+                    Payments
                 </a>
 
                 <div x-data="{ open: {{ request()->routeIs('admin.packages*') || request()->routeIs('admin.addons*') ? 'true' : 'false' }} }">

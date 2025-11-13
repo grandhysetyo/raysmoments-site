@@ -17,7 +17,7 @@ class PhotographerController extends Controller
     {
         $photographers = User::where('role', 'photographer')
                              // --- PERBARUI BARIS INI ---
-                             ->with('profile.rates') // Load profile DAN rates di dalam profile
+                             ->with('photographerProfile.rates') // Load profile DAN rates di dalam profile
                              // -------------------------
                              ->latest()
                              ->paginate(10);
@@ -57,8 +57,8 @@ class PhotographerController extends Controller
         ]);
 
         // 3. Buat data Profile yang terhubung dengan User
-        // Kita menggunakan relasi `profile()` yang ada di model User
-        $user->profile()->create([
+        // Kita menggunakan relasi `photographerProfile()` yang ada di model User
+        $user->photographerProfile()->create([
             'bio' => $validatedData['bio'] ?? null,
             'speciality' => $validatedData['speciality'] ?? null,
             'experience_years' => $validatedData['experience_years'] ?? 0,
@@ -79,7 +79,7 @@ class PhotographerController extends Controller
         // Jika data profile sudah ada di memori, kita harus memuat ulang rates-nya.
         
         // Perintah ini akan memuat ulang Profile, dan Rates yang ada di Profile.
-        $photographer->load('profile.rates'); 
+        $photographer->load('photographerProfile.rates'); 
 
         return view('admin.photographers.edit', compact('photographer'));
     }
@@ -115,7 +115,7 @@ class PhotographerController extends Controller
         // 3. Update data Profile (gunakan updateOrCreate untuk keamanan)
         // Ini akan meng-update profile jika ada, atau membuatnya jika
         // (karena suatu alasan) profile-nya terhapus.
-        $photographer->profile()->updateOrCreate(
+        $photographer->photographerProfile()->updateOrCreate(
             ['photographer_id' => $photographer->id], // Kunci pencarian
             [
                 // Data untuk di-update

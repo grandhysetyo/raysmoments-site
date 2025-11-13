@@ -4,6 +4,18 @@
 @section('page-title', 'INVOICE & VERIFIKASI: ' . $booking->order_code)
 
 @section('content')
+{{-- TAMBAHKAN BLOK INI UNTUK MELIHAT ERROR VALIDASI --}}
+@if ($errors->any())
+    <div class="max-w-4xl mx-auto p-4 mb-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+        <strong class="font-bold">Oops! Ada kesalahan:</strong>
+        <ul class="mt-2 list-disc list-inside">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-2xl border-t-4 border-indigo-600">
 
     {{-- HEADER INVOICE --}}
@@ -13,10 +25,11 @@
             <p class="text-sm text-gray-500">Order ID: {{ $booking->order_code }}</p>
         </div>
         <div class="text-right">
-            <p class="text-sm font-semibold text-gray-700">Status Pembayaran:</p>
+            <p class="text-sm font-semibold text-gray-700">Status Pemesanan:</p>
             <span class="text-lg font-bold px-3 py-1 rounded-full 
                 @if($booking->status == 'DP Verified') bg-green-100 text-green-700 
                 @elseif($booking->status == 'Cancelled') bg-red-100 text-red-700
+                @elseif($booking->status == 'Pending') bg-blue-100 text-blue-700  {{-- UPDATE WARNA --}}
                 @else bg-yellow-100 text-yellow-700 @endif">
                 {{ $booking->status }}
             </span>
@@ -26,6 +39,7 @@
     {{-- ========================================================= --}}
     {{-- A. DATA CLIENT & ACARA --}}
     {{-- ========================================================= --}}
+    {{-- ... (BAGIAN INI TIDAK BERUBAH) ... --}}
     <div class="mb-8 p-4 border rounded-lg bg-gray-50">
         <h3 class="text-lg font-semibold mb-3 text-gray-800">Detail Klien (Ditujukan Kepada)</h3>
         
@@ -68,12 +82,13 @@
             <p class="text-sm italic whitespace-pre-wrap">{{ $booking->notes ?? 'Tidak ada catatan khusus.' }}</p>
         </div>
     </div>
-    {{-- END A. DATA CLIENT --}}
+    {{-- ... (AKHIR BAGIAN A) ... --}}
 
 
     {{-- ========================================================= --}}
     {{-- B. ORDER DETAILS / LINE ITEMS --}}
     {{-- ========================================================= --}}
+    {{-- ... (BAGIAN INI TIDAK BERUBAH) ... --}}
     <h3 class="text-xl font-semibold mb-3 border-b pb-1 text-gray-800">Detail Layanan</h3>
     <div class="overflow-x-auto mb-8">
         <table class="min-w-full divide-y divide-gray-200">
@@ -113,8 +128,11 @@
             </tbody>
         </table>
     </div>
+    {{-- ... (AKHIR BAGIAN B) ... --}}
+
 
     {{-- C. SUMMARY / TOTALS --}}
+    {{-- ... (BAGIAN INI TIDAK BERUBAH) ... --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {{-- KIRI: Keterangan --}}
         <div>
@@ -140,6 +158,8 @@
             </div>
         </div>
     </div>
+    {{-- ... (AKHIR BAGIAN C) ... --}}
+
 
     <hr class="my-8">
     
@@ -153,14 +173,20 @@
         {{-- Kolom 1: Tampilan Bukti Transfer --}}
         <div>
             <h4 class="font-bold text-lg mb-3">Bukti Transfer Klien:</h4>
-            @if($booking->dp_proof_path) {{-- Memeriksa apakah bukti transfer sudah diunggah --}}
-                <a href="{{ Storage::url($booking->dp_proof_path) }}" target="_blank" class="block border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:opacity-90 transition duration-150">
-                    <img src="{{ Storage::url($booking->dp_proof_path) }}" alt="Bukti Transfer DP" class="w-full h-auto object-cover">
+            
+            {{-- PERUBAHAN DI SINI: Gunakan $dpPayment --}}
+            @if($dpPayment && $dpPayment->proof_url)
+                <p class="text-sm text-gray-600 mb-2">
+                    Status Pembayaran: <strong class="text-blue-600">{{ $dpPayment->status }}</strong> | 
+                    Jumlah: <strong class="text-blue-600">Rp {{ number_format($dpPayment->amount, 0) }}</strong>
+                </p>
+                <a href="{{ Storage::url($dpPayment->proof_url) }}" target="_blank" class="block border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:opacity-90 transition duration-150">
+                    <img src="{{ Storage::url($dpPayment->proof_url) }}" alt="Bukti Transfer DP" class="w-full h-auto object-cover">
                 </a>
                 <p class="text-sm text-gray-500 mt-2">Klik gambar untuk melihat ukuran penuh.</p>
             @else
-                <div class="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-                    <p class="font-semibold">Belum Ada Bukti Transfer</p>
+                <div class="p-4 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg">
+                    <p class="font-semibold">Menunggu Bukti Transfer</p>
                     <p class="text-sm">Klien belum mengunggah bukti pembayaran DP.</p>
                 </div>
             @endif
@@ -168,7 +194,13 @@
 
         {{-- Kolom 2: Tombol Aksi --}}
         <div>
-            @if($booking->status === 'Awaiting DP' || $booking->status === 'DP Submitted')
+            {{-- 
+                PERUBAHAN LOGIKA IF: 
+                Ganti 'Awaiting DP' || 'DP Submitted' 
+                menjadi 'Pending' (sesuai status booking baru)
+                atau 'Awaiting DP' (jika admin mau verif manual)
+            --}}
+            @if($booking->status === 'Pending' || $booking->status === 'Awaiting DP')
                 <h4 class="font-bold text-lg mb-3">Aksi Verifikasi DP:</h4>
                 <div class="space-y-4">
                     
@@ -177,10 +209,11 @@
                         @csrf
                         <input type="hidden" name="status" value="DP Verified">
                         <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50"
-                                @if(!$booking->dp_proof_path) disabled @endif>
+                                {{-- PERUBAHAN DISABLED: Cek $dpPayment --}}
+                                @if(!($dpPayment && $dpPayment->proof_url)) disabled @endif>
                             <i class="fas fa-check-circle mr-2"></i> KONFIRMASI DP
                         </button>
-                        @if(!$booking->dp_proof_path)
+                        @if(!($dpPayment && $dpPayment->proof_url))
                             <p class="text-xs text-red-500 mt-1">Tombol dinonaktifkan karena Bukti Transfer belum diunggah.</p>
                         @endif
                     </form>

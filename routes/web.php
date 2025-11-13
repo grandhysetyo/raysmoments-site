@@ -13,10 +13,12 @@ use App\Http\Controllers\Admin\PhotographerController;
 use App\Http\Controllers\Admin\PhotographerRateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\NewBookingController;
+use App\Http\Controllers\Client\BookingChangeRequestController;
+use App\Http\Controllers\Admin\UpcomingShootingController;
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminPaymentsController;
 use App\Http\Controllers\Client\TrackingController;
-use App\Http\Controllers\Client\BookingChangeRequestController;
+
 
 
 
@@ -77,13 +79,39 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // "New Books" (Hanya untuk booking Awaiting DP)
     Route::get('/new-books', [NewBookingController::class, 'index'])->name('new-books.index');
     Route::get('/new-books/{booking}', [NewBookingController::class, 'show'])->name('new-books.show');
-
     // Master Booking
     Route::resource('bookings', AdminBookingController::class)->except(['index', 'show']);
     
     // Aksi Verifikasi DP
-    Route::post('/bookings/{booking}/update-dp-status', [AdminPaymentsController::class, 'verifyDP'])
+    Route::post('/payments/{booking}/update-dp-status', [AdminPaymentsController::class, 'verifyDP'])
              ->name('payments.verify_dp');
+    
+     // Upcoming Shooting
+    // (Nama route: admin.upcoming.*)
+    Route::prefix('upcoming')->name('upcoming.')->group(function () {
+        Route::get('/', [UpcomingShootingController::class, 'index'])
+                ->name('index');
+        
+        // Halaman Show (Form Assignment)
+        // (Nama route: admin.upcoming.show)
+        Route::get('/{booking}', [UpcomingShootingController::class, 'show'])
+                ->name('show');
+        
+        // Aksi untuk Assign Fotografer
+        // (Nama route: admin.upcoming.assign)
+        Route::post('/{booking}/assign', [UpcomingShootingController::class, 'assign'])
+                ->name('assign');
+        
+        // Aksi untuk Refund
+        // (Nama route: admin.upcoming.refund)
+        Route::post('/{booking}/refund', [UpcomingShootingController::class, 'refund'])
+                ->name('refund');
+
+        // Helper Route untuk AJAX (Mengambil Rates)
+        // (Nama route: admin.upcoming.get_rates)
+        Route::get('/get-rates/{photographer}', [UpcomingShootingController::class, 'getRates'])
+                ->name('get_rates');
+    });
 });
 
 // Rute Fotografer

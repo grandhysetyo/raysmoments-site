@@ -44,7 +44,6 @@ class AdminPaymentsController extends Controller
                 
                 // B. Update Status di Tabel Bookings (Efek dari Payment)
                 $booking->update(['status' => 'DP Verified']);
-                
                 $message = 'Pembayaran DP berhasil diverifikasi. Status Booking diubah menjadi DP Verified.';
 
             } elseif ($newStatus === 'Cancelled') {
@@ -57,7 +56,9 @@ class AdminPaymentsController extends Controller
 
             DB::commit();
 
-            return back()->with('success', $message);
+            // 2. Redirect ke halaman daftar pemesanan
+            return redirect()->route('admin.new-books.index')
+                            ->with('success', 'Status pemesanan berhasil diperbarui.');
 
         } catch (\Exception $e) {
             DB::rollBack();

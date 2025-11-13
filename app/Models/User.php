@@ -32,9 +32,8 @@ class User extends Authenticatable
     {        
         return $this->hasOne(ClientDetail::class, 'client_id');
     }
-    public function profile(): HasOne
+    public function photographerProfile()
     {
-        // 'photographer_id' adalah foreign key di tabel photographer_profiles
         return $this->hasOne(PhotographerProfile::class, 'photographer_id');
     }
     public function bookings(): HasMany

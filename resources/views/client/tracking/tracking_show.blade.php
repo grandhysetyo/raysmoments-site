@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $dpPayment = $payments->where('payment_type', 'DP')->first();
+    $finalPayment = $payments->where('payment_type', 'Final Payment')->first();
+@endphp
 <div class="max-w-4xl mx-auto p-4 md:p-8 mt-6">
     <h1 class="text-3xl font-extrabold mb-8 text-gray-900 border-b pb-3">Detail Pelacakan Pesanan</h1>
     {{-- ========================================================= --}}
@@ -300,16 +304,16 @@
                     {{-- Tentukan Tipe Pembayaran (DP / Final) secara otomatis --}}
                     @php
                         $paymentType = ($booking->status === 'Awaiting DP') ? 'DP' : 'Final Payment';
-                        $minAmount = ($paymentType === 'DP') ? $booking->dp_amount : $remainingBill;
+                        $minAmount = ($paymentType === 'DP') ? $booking->amount : $remainingBill;
                     @endphp
                     <input type="hidden" name="payment_type" value="{{ $paymentType }}">
 
                     <div class="bg-gray-100 p-3 rounded-md text-sm">
                         Anda akan mengupload bukti untuk: <strong class="text-indigo-600">{{ $paymentType }}</strong>
                         @if($paymentType == 'DP')
-                        <p>Jumlah DP: Rp {{ number_format($booking->dp_amount, 0) }}</p>
+                        <p>Jumlah DP: Rp {{ number_format($dpPayment->amount ?? 0, 0, ',', '.') }}</p>
                         @else
-                        <p>Sisa Tagihan: Rp {{ number_format($remainingBill, 0) }}</p>
+                        <p>Sisa Tagihan: Rp {{ number_format($finalPayment->amount ?? 0, 0, ',', '.') }}</p>
                         @endif
                     </div>
                     

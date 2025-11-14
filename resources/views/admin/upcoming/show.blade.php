@@ -68,6 +68,7 @@
                 @error('photographer_rate')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
 
+            {{-- 4. Biaya Lain-Lain --}}
             <div>
                 <label for="photographer_other_costs" class="block text-sm font-medium text-gray-700">Biaya Lain-Lain (Rp)</label>
                 <input type="number" name="photographer_other_costs" id="photographer_other_costs" 

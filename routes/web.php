@@ -17,7 +17,9 @@ use App\Http\Controllers\Client\BookingChangeRequestController;
 use App\Http\Controllers\Admin\UpcomingShootingController;
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminPaymentsController;
+use App\Http\Controllers\Admin\ProjectController;
 use App\Http\Controllers\Client\TrackingController;
+
 
 
 
@@ -111,6 +113,29 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
         // (Nama route: admin.upcoming.get_rates)
         Route::get('/get-rates/{photographer}', [UpcomingShootingController::class, 'getRates'])
                 ->name('get_rates');
+    });
+
+    // --- Rute List Project (Verifikasi Final Payment) ---
+    Route::prefix('projects')->name('projects.')->group(function () {
+        
+        // Halaman Index (Daftar Proyek)
+        // (Nama route: admin.projects.index)
+        Route::get('/', [ProjectController::class, 'index'])
+             ->name('index');
+        
+        // Halaman Show (Verifikasi Final Payment)
+        // (Nama route: admin.projects.show)
+        Route::get('/{booking}', [ProjectController::class, 'show'])
+             ->name('show');
+        
+        // Aksi untuk Update Status
+        Route::post('/{booking}/update-status', [App\Http\Controllers\Admin\ProjectController::class, 'updateStatus'])
+            ->name('update_status');
+
+        // Aksi untuk Verifikasi / Tolak Final Payment
+        // (Nama route: admin.projects.verify_final)
+        // Route::post('/{booking}/verify-final', [ProjectController::class, 'verifyFinalPayment'])
+        //      ->name('verify_final');
     });
 });
 

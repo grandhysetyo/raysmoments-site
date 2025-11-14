@@ -72,6 +72,14 @@ class PaymentController extends Controller
                 'status' => 'Pending' // Set (atau set ulang) status ke 'Pending' untuk direview Admin
             ]);
 
+            if ($validated['payment_type'] === 'DP') {
+                // Jika ini DP, set status booking ke 'Pending' (untuk Verifikasi DP)
+                $booking->status = 'Pending';
+            } elseif ($validated['payment_type'] === 'Final Payment') {
+                // Jika ini Final Payment, set status ke 'Pending Final Payment'
+                $booking->status = 'Pending Final Payment';
+            }
+
             // 6. Update status booking
             if ($booking->status === 'Awaiting DP' || $booking->status === 'Awaiting Final Payment' || $booking->status === 'Pending') {
                 $booking->status = 'Pending'; // Ubah status booking agar tombol upload hilang

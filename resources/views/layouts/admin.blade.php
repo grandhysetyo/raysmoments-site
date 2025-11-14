@@ -43,7 +43,7 @@
                     Dashboard
                 </a>
 
-                <div x-data="{ open: {{ request()->routeIs('admin.new-books*') || request()->routeIs('admin.upcoming*') ? 'true' : 'false' }} }">
+                <div x-data="{ open: {{ request()->routeIs('admin.new-books*') || request()->routeIs('admin.upcoming*') || request()->routeIs('admin.projects*') ? 'true' : 'false' }} }">
                     <button @click="open = !open" 
                             class="w-full flex justify-between items-center px-4 py-2.5 rounded-lg transition duration-200 hover:bg-gray-700 hover:text-white">
                         <span class="flex items-center">
@@ -66,6 +66,11 @@
                            class="block px-4 py-2 rounded-lg text-sm 
                                   {{ request()->routeIs('admin.upcoming.index*') ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 hover:text-white' }}">
                             Upcoming Shooting 
+                        </a>
+                        <a href="{{ route('admin.projects.index') }}"
+                           class="block px-4 py-2 rounded-lg text-sm 
+                                  {{ request()->routeIs('admin.projects.index*') ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 hover:text-white' }}">
+                            List Project 
                         </a>
                     </div>
                 </div>

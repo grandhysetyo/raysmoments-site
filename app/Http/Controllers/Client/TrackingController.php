@@ -28,7 +28,7 @@ class TrackingController extends Controller
 
         if (!$booking) {
             // Jika booking tidak ditemukan
-            return redirect()->route('client.tracking.index')
+            return redirect()->route('tracking.index')
                              ->with('error', 'Kode pesanan tidak ditemukan. Harap periksa kembali.');
         }
 
@@ -45,12 +45,12 @@ class TrackingController extends Controller
     protected function getBookingTimeline($currentStatus)
     {
         $statuses = [
-            'Awaiting DP Submission' => 'Menunggu Submission DP Klien',
-            'Awaiting DP' => 'Menunggu Verifikasi DP Admin',
+            'Awaiting DP' => 'Menunggu Submission DP Klien',
+            'Pending' => 'Menunggu Verifikasi DP Admin',
             'DP Verified' => 'DP Terverifikasi, Jadwal Diamankan',
+            'Photographer Assigned' => 'Fotografer Ditugaskan',
             'Awaiting Final Payment' => 'Menunggu Pembayaran Final',
             'Fully Paid' => 'Lunas, Siap Produksi',
-            'Photographer Assigned' => 'Fotografer Ditugaskan',
             'Shooting Completed' => 'Sesi Foto Selesai',
             'Edits In Progress' => 'Proses Editing',
             'Edits Delivered' => 'Hasil Editing Dikirim',

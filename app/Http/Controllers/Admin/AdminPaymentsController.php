@@ -67,4 +67,46 @@ class AdminPaymentsController extends Controller
             return back()->with('error', 'Gagal memproses verifikasi. Error: ' . $e->getMessage());
         }
     }
+    public function verifyFullPayment(Request $request, Booking $booking)
+    {
+        // 1. Temukan kedua record payment
+        $dpPayment = $booking->payments()->where('payment_type', 'DP')->latest()->first();
+        $finalPayment = $booking->payments()->where('payment_type', 'Final Payment')->latest()->first();
+
+        if (!$dpPayment) {
+            return back()->with('error', 'Gagal menemukan data DP payment.');
+        }
+
+        try {
+            DB::beginTransaction();
+            
+            // 2. Update status Booking langsung ke 'Fully Paid'
+            // Ini akan membuat booking melompati alur 'Awaiting Final Payment'
+            $booking->status = 'Fully Paid';
+            $booking->save();
+
+            // 3. Konfirmasi DP Payment (yang ada bukti transfernya)
+            $dpPayment->status = 'Confirmed';
+            $dpPayment->save();
+
+            // 4. Konfirmasi Final Payment (meski tidak ada bukti)
+            // Karena admin sudah memverifikasi pembayaran lunas
+            if ($finalPayment) {
+                $finalPayment->status = 'Confirmed';
+                // Opsional: salin jumlah/bukti agar konsisten
+                // $finalPayment->amount = $booking->grand_total - $dpPayment->amount;
+                $finalPayment->save();
+            }
+
+            DB::commit();
+            
+            return redirect()->route('admin.new-books.index')
+                             ->with('success', 'Booking ' . $booking->order_code . ' telah dikonfirmasi LUNAS.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Full payment verification failed: ' . $e->getMessage());
+            return back()->with('error', 'Gagal verifikasi pembayaran lunas: ' . $e->getMessage());
+        }
+    }
 }

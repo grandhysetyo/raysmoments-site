@@ -67,7 +67,7 @@
                       <label for="event_date" class="block mb-1 font-medium text-gray-700">Tanggal Acara</label>
                       {{-- Logika "Smart Value": old() ATAU $booking->event_date ATAU '' --}}
                       <input type="date" name="event_date" id="event_date" 
-                             value="{{ old('event_date', $booking->event_date ?? '') }}" 
+                             value="{{ old('event_date', $booking->event_date?->format('Y-m-d')) }}"
                              class="w-full border border-gray-300 rounded p-2 @error('event_date') border-red-500 @enderror" required>
                       @error('event_date')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                   </div>
@@ -75,7 +75,7 @@
                   <div>
                       <label for="session_1_time" class="block mb-1 font-medium text-gray-700">Waktu Sesi 1</label>
                       <input type="time" name="session_1_time" id="session_1_time" 
-                             value="{{ old('session_1_time', $booking->session_1_time ?? '') }}" 
+                             value="{{ old('session_1_time', $booking->session_1_time?->format('H:i')) }}"
                              class="w-full border border-gray-300 rounded p-2 @error('session_1_time') border-red-500 @enderror" required>
                       @error('session_1_time')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                   </div>
@@ -83,7 +83,7 @@
                   <div id="session_2_client_container" style="display:none;">
                       <label for="session_2_time" class="block mb-1 font-medium text-gray-700">Waktu Sesi 2</label>
                       <input type="time" name="session_2_time" id="session_2_time" 
-                             value="{{ old('session_2_time', $booking->session_2_time ?? '') }}" 
+                             value="{{ old('session_2_time', $booking->session_2_time?->format('H:i')) }}"
                              class="w-full border border-gray-300 rounded p-2 @error('session_2_time') border-red-500 @enderror">
                       @error('session_2_time')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
                   </div>

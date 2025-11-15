@@ -54,6 +54,7 @@ class AdminBookingController extends Controller
             // --- Kalkulasi Harga ---
             'addons' => 'nullable|array',
             'addons.*' => 'exists:addons,id', // Memastikan ID addon valid
+            'payment_option' => 'required|string|in:dp,full',
             'grand_total' => 'required|numeric|min:0', // Grand Total dari JS
             'dp_amount' => 'required|numeric|min:0|max:' . $request->input('grand_total'), // DP dari JS
         ]);
@@ -65,11 +66,14 @@ class AdminBookingController extends Controller
         $packagePrice = $package->price;
         $addonsTotal = $selectedAddons->sum('price');
         $grandTotalFinal = $packagePrice + $addonsTotal;
-        $dpAmountFinal = $grandTotalFinal * 0.5;
         
-        // Final Security Check (SAMA)
-        if (floatval($validatedData['grand_total']) != $grandTotalFinal || floatval($validatedData['dp_amount']) != $dpAmountFinal) {
-             return back()->with('error', 'Terjadi ketidaksesuaian harga. Harap hitung ulang dan pastikan harga paket/addon sudah benar.')->withInput();
+        // 2. Final Security Check (Cek sebagai string terformat)
+        $jsGrandTotal = number_format(floatval($validatedData['grand_total']), 2, '.', '');
+        $phpGrandTotal = number_format($grandTotalFinal, 2, '.', '');
+
+        if ($jsGrandTotal != $phpGrandTotal) {
+            \Log::error("Price mismatch on create: JS ($jsGrandTotal) != PHP ($phpGrandTotal)");
+            return back()->with('error', 'Terjadi ketidaksesuaian harga (Kalkulasi PHP: Rp '. $phpGrandTotal .'). Harap hitung ulang.')->withInput();
         }
 
         DB::beginTransaction();
@@ -119,11 +123,43 @@ class AdminBookingController extends Controller
             ]);
             
             // D. BUAT PAYMENT (DP Awal)
-            Payment::create([
-                'booking_id' => $booking->id,
-                'amount' => $dpAmountFinal, // <-- DP 50% yang sudah dihitung server
+            $paymentOption = $validatedData['payment_option'];
+            $dpAmount = 0;
+            $finalAmount = 0;
+
+            // HARUS GUNAKAN $grandTotalFinal YANG SUDAH DIHITUNG DI BACKEND
+            if ($paymentOption === 'full') {
+                // Klien bayar lunas 100% di awal
+                $dpAmount = $grandTotalFinal;
+                $finalAmount = 0;
+                
+            } else {
+                // Alur normal, DP 50%
+                $dpAmount = $grandTotalFinal * 0.5;
+                $finalAmount = $grandTotalFinal * 0.5;
+            }
+
+            // Saat admin membuat manual, status booking harus 'Awaiting DP'
+            // (Pastikan status booking Anda sesuai)
+            $booking->update(['status' => 'Awaiting DP']);
+
+            // Buat Payment DP
+            $booking->payments()->create([
+                'amount' => $dpAmount,
                 'payment_type' => 'DP',
-                'status' => 'Pending',
+                'status' => 'Pending', // Admin harus upload bukti & verifikasi manual nanti
+                'proof_url' => null, 
+                'verified_by' => null,
+            ]);
+
+            // Buat Payment Final
+            $booking->payments()->create([
+                'payment_type' => 'Final',
+                'amount' => $finalAmount,
+                // Jika 0, status 'Verified', jika > 0, status 'Pending'
+                'status' => $finalAmount > 0 ? 'Pending' : 'Verified',
+                'proof_url' => null,
+                'verified_by' => null,
             ]);
             
             // E. SIMPAN DETAIL ADDON KE BOOKING_ADDONS (LOGIKA BARU)
@@ -201,23 +237,27 @@ class AdminBookingController extends Controller
 
             'grand_total' => 'required|numeric|min:0', // Grand Total dari JS
             'dp_amount' => 'required|numeric|min:0|max:' . $request->input('grand_total'), // DP dari JS
+            'payment_option' => 'required|string|in:dp,full'
         ]);
 
         // =========================================================
         // 2. TENTUKAN HARGA BARU dan Update data
         // =========================================================
-        
-        // Ambil data Package dan Add-ons untuk kalkulasi di backend
+        // 1. Ambil data Addons untuk kalkulasi di backend (WAJIB UNTUK KEAMANAN)
+        $selectedAddons = Addon::whereIn('id', $validatedData['addons'] ?? [])->get();
         $package = Package::findOrFail($validatedData['package_id']);
-        $addons = Addon::whereIn('id', $validatedData['addons'] ?? [])->get();
         
         $packagePrice = $package->price;
-        $addonsTotal = $addons->sum('price');
-        $grandTotal = $packagePrice + $addonsTotal;
+        $addonsTotal = $selectedAddons->sum('price');
+        $grandTotalFinal = $packagePrice + $addonsTotal;
 
-        // Cek jika harga form sama dengan harga kalkulasi backend
-        if ($grandTotal != $validatedData['grand_total']) {
-             return back()->withInput()->with('error', 'Kesalahan kalkulasi harga. Silakan coba lagi.');
+        // 2. Final Security Check (Cek sebagai string terformat)
+        $jsGrandTotal = number_format(floatval($validatedData['grand_total']), 2, '.', '');
+        $phpGrandTotal = number_format($grandTotalFinal, 2, '.', '');
+
+        if ($jsGrandTotal != $phpGrandTotal) {
+            \Log::error("Price mismatch on update $booking->id: JS ($jsGrandTotal) != PHP ($phpGrandTotal)");
+            return back()->with('error', 'Terjadi ketidaksesuaian harga (Kalkulasi PHP: Rp '. $phpGrandTotal .'). Harap hitung ulang.')->withInput();
         }
 
 
@@ -250,27 +290,71 @@ class AdminBookingController extends Controller
                 'event_city' => $validatedData['event_city'],
                 'package_price' => $packagePrice, // <-- Harga Package baru
                 'addons_total' => $addonsTotal,   // <-- Total Add-ons baru
-                'grand_total' => $grandTotal,     // <-- Grand Total baru
+                'grand_total' => $grandTotalFinal,     // <-- Grand Total baru
                 'notes' => $validatedData['notes'] ?? null, // <-- Catatan baru
             ]);
 
-            // D. Sinkronisasi Add-ons (Logika Kunci)
-            // // 1. Hapus semua record BookingAddon yang terkait dengan Booking ini
-            //    Ini menghapus Add-ons yang dihapus oleh Admin
-            $booking->bookingAddons()->delete(); 
-        
-            // 2. Buat record BookingAddon baru untuk Add-ons yang baru/tersisa
-            if ($addons->isNotEmpty()) {
-                foreach ($addons as $addon) {
-                    BookingAddon::create([
-                        'booking_id' => $booking->id,
-                        'addon_id' => $addon->id,
-                        'quantity' => 1, // Asumsi Quantity 1
-                        'price' => $addon->price,
-                        'grand_total' => $addon->price, // Harga total baris ini
+            // D. BUAT PAYMENT (DP Awal)
+            $paymentOption = $validatedData['payment_option'];
+            $dpAmount = 0;
+            $finalAmount = 0;
+
+            if ($paymentOption === 'full') {
+                $dpAmount = $grandTotalFinal;
+                $finalAmount = 0;
+            } else {
+                $dpAmount = $grandTotalFinal * 0.5;
+                $finalAmount = $grandTotalFinal * 0.5;
+            }
+
+            // Cari payment DP yang ada dan UPDATE, JANGAN CREATE
+            $dpPayment = $booking->payments()->where('payment_type', 'DP')->first();
+            if ($dpPayment) {
+                // Hanya update amount jika statusnya masih Pending
+                if ($dpPayment->status == 'Pending') {
+                    $dpPayment->update(['amount' => $dpAmount]);
+                }
+            } else {
+                // Fallback jika anehnya datanya tidak ada
+                $booking->payments()->create([
+                    'amount' => $dpAmount, 'payment_type' => 'DP', 'status' => 'Pending',
+                ]);
+            }
+
+            // Cari payment Final yang ada dan UPDATE
+            $finalPayment = $booking->payments()->where('payment_type', 'Final')->first();
+            if ($finalPayment) {
+                // Hanya update amount jika statusnya masih Pending (atau Verified jika 0)
+                if ($finalPayment->status == 'Pending' || $finalPayment->status == 'Verified') {
+                    $finalPayment->update([
+                        'amount' => $finalAmount,
+                        'status' => $finalAmount > 0 ? 'Pending' : 'Verified',
                     ]);
                 }
+            } else {
+                // Fallback jika anehnya datanya tidak ada
+                $booking->payments()->create([
+                    'amount' => $finalAmount,
+                    'payment_type' => 'Final',
+                    'status' => $finalAmount > 0 ? 'Pending' : 'Verified',
+                ]);
             }
+
+            // E. Sinkronisasi Add-ons (Logika Kunci)
+            // // 1. Hapus semua record BookingAddon yang terkait dengan Booking ini
+            //    Ini menghapus Add-ons yang dihapus oleh Admin
+            $addonsData = [];
+            if ($selectedAddons->isNotEmpty()) {
+                foreach ($selectedAddons as $addon) {
+                    $addonsData[$addon->id] = [
+                        'quantity' => 1,
+                        'price' => $addon->price,
+                        'grand_total' => $addon->price,
+                    ];
+                }
+            }
+            // Sync akan hapus yg lama, masukkan yg baru.
+            $booking->addons()->sync($addonsData);
 
             DB::commit();
             return redirect()->route('admin.new-books.index')

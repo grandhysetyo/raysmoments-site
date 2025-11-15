@@ -1,111 +1,115 @@
 <script>
-  /**
-   * Ini adalah "Gaya Admin" yang Anda minta.
-   * Skrip hanya akan berjalan setelah semua HTML selesai dimuat.
-   */
-  document.addEventListener('DOMContentLoaded', function() {
-      
-      // --- Variabel ---
-      // Kita ambil elemen-elemen ini HANYA SETELAH DOM siap
-      const packageSelect = document.getElementById('package_id');
-      const addonCheckboxes = document.querySelectorAll('.addon-checkbox');
-      const packagePriceDisplay = document.getElementById('package_price');
-      const addonsTotalDisplay = document.getElementById('addons_total');
-      const grandTotalDisplay = document.getElementById('grand_total_display');
-      const grandTotalHidden = document.getElementById('grand_total_hidden');
-      const packagePriceHidden = document.getElementById('package_price_hidden');
-      const addonsTotalHidden = document.getElementById('addons_total_hidden');
-      const session2Container = document.getElementById('session_2_client_container');
-      const session2Input = document.getElementById('session_2_time');
-  
-      // --- Fungsi ---
-  
-      function formatRupiah(number) {
-          return 'Rp ' + (Math.round(number)).toLocaleString('id-ID');
-      }
-  
-      /**
-       * Mengatur visibilitas Sesi 2
-       */
-      function handleSessionVisibility() {
-          // Cek jika elemen ada (sebagai keamanan)
-          if (!packageSelect || !session2Container) return; 
-          
-          // Cek jika ada opsi yang dipilih (bukan placeholder)
-          if (packageSelect.selectedIndex <= 0) { // <= 0 untuk menangani placeholder
-              session2Container.style.display = 'none';
-              if (session2Input) session2Input.value = '';
-              return;
-          }
-          
-          const selectedPackage = packageSelect.options[packageSelect.selectedIndex];
-          const duration = parseFloat(selectedPackage.dataset.duration) || 0;
-  
-          if (duration >= 2) {
-              session2Container.style.display = 'block';
-          } else {
-              session2Container.style.display = 'none';
-              if (session2Input) session2Input.value = '';
-          }
-      }
-  
-      /**
-       * Menghitung total harga
-       */
-      function calculateTotal() {
-          if (!packageSelect) return;
-  
-          let packagePrice = 0;
-          
-          // Cek jika ada opsi yang dipilih (bukan placeholder)
-          if (packageSelect.selectedIndex > 0) {
-              const selectedPackage = packageSelect.options[packageSelect.selectedIndex];
-              packagePrice = parseFloat(selectedPackage.dataset.price) || 0;
-          }
-  
-          let addonsTotal = 0;
-          addonCheckboxes.forEach(cb => {
-              if (cb.checked) {
-                  addonsTotal += parseFloat(cb.dataset.price) || 0;
-              }
-          });
-  
-          const grandTotal = packagePrice + addonsTotal;
-  
-          // Update Display (tambahkan cek null untuk keamanan)
-          if(packagePriceDisplay) packagePriceDisplay.textContent = formatRupiah(packagePrice);
-          if(addonsTotalDisplay) addonsTotalDisplay.textContent = formatRupiah(addonsTotal);
-          if(grandTotalDisplay) grandTotalDisplay.textContent = formatRupiah(grandTotal);
-  
-          // Update Hidden Inputs
-          if(grandTotalHidden) grandTotalHidden.value = grandTotal.toFixed(2);
-          if(packagePriceHidden) packagePriceHidden.value = packagePrice.toFixed(2);
-          if(addonsTotalHidden) addonsTotalHidden.value = addonsTotal.toFixed(2);
-      }
-  
-      // --- Event Listeners ---
-      
-      // Tambahkan listener HANYA jika elemennya ada
-      // Ini adalah pengecekan krusial
-      if (packageSelect) {
-          packageSelect.addEventListener('change', function() {
-              calculateTotal();
-              handleSessionVisibility();
-          });
-      } else {
-          // Jika ini muncul, berarti ID di HTML (Langkah 1) 100% SALAH.
-          console.error("CRITICAL: document.getElementById('package_id') tidak ditemukan. Cek kembali HTML Anda.");
-      }
-  
-      if (addonCheckboxes) {
-          addonCheckboxes.forEach(cb => cb.addEventListener('change', calculateTotal));
-      }
-  
-      // --- Panggilan Awal ---
-      // Panggil fungsi saat halaman dimuat (setelah DOM siap)
-      // untuk mengatur nilai awal berdasarkan 'old' input atau paket default.
-      calculateTotal();
-      handleSessionVisibility();
-  
-  }); // Akhir dari DOMContentLoaded
-  </script>
+    // Ini adalah cara jQuery untuk 'DOMContentLoaded'
+    // Skrip ini hanya akan berjalan jika jQuery sudah dimuat.
+    $(document).ready(function() {
+
+        // --- Fungsi Helper ---
+
+        function formatRupiah(number) {
+            return 'Rp ' + (Math.round(number)).toLocaleString('id-ID');
+        }
+
+        /**
+         * Mengatur visibilitas Sesi 2 (versi jQuery)
+         */
+        function handleSessionVisibility() {
+            const $packageSelect = $('#package_id');
+            const $session2Container = $('#session_2_client_container');
+            const $session2Input = $('#session_2_time');
+
+            // Cek jika elemen ada
+            if (!$packageSelect.length || !$session2Container.length) return;
+
+            // Dapatkan 'option' yang dipilih
+            const $selectedOption = $packageSelect.find('option:selected');
+            
+            // Cek jika itu placeholder (value-nya kosong)
+            if (!$selectedOption.val() || $selectedOption.val() == "") {
+                $session2Container.hide(); // Sembunyikan
+                $session2Input.val('');
+                return;
+            }
+
+            // Ambil data-duration dari opsi yang dipilih
+            const duration = parseFloat($selectedOption.data('duration')) || 0;
+
+            if (duration >= 2) {
+                $session2Container.show(); // Tampilkan
+            } else {
+                $session2Container.hide(); // Sembunyikan
+                $session2Input.val('');
+            }
+        }
+
+        /**
+         * Menghitung total harga (Fungsi Anda, sudah benar)
+         */
+        function calculateTotal() {
+            // 1. Ambil harga paket
+            let packagePrice = 0;
+            const selectedPackage = $('#package_id').find('option:selected');
+            if (selectedPackage.length && selectedPackage.val() != "") {
+                packagePrice = parseFloat(selectedPackage.data('price')) || 0;
+            }
+
+            // 2. Ambil harga addons
+            let addonsTotal = 0;
+            // Gunakan class '.addon-checkbox' yang Anda definisikan di HTML
+            $('.addon-checkbox:checked').each(function() {
+                addonsTotal += parseFloat($(this).data('price')) || 0;
+            });
+
+            // 3. Hitung grandTotal
+            const grandTotal = packagePrice + addonsTotal;
+
+            // 4. Logika Opsi Pembayaran
+            const paymentOption = $('input[name="payment_option"]:checked').val();
+            let dpAmount = 0;
+            let finalAmount = 0;
+
+            if (paymentOption === 'full') {
+                dpAmount = grandTotal;
+                finalAmount = 0;
+                $('#dp-label-text').text('Bayar Lunas (100%):');
+                $('#final-label-text').text('Sisa Tagihan:');
+            } else {
+                dpAmount = grandTotal * 0.5;
+                finalAmount = grandTotal * 0.5;
+                $('#dp-label-text').text('Bayar DP (50%):');
+                $('#final-label-text').text('Sisa Tagihan (50%):');
+            }
+
+            // 5. Tampilkan semua nilai ke ID yang benar
+            $('#package_price').text(formatRupiah(packagePrice));
+            $('#addons_total').text(formatRupiah(addonsTotal));
+            $('#grand_total_display').text(formatRupiah(grandTotal));
+            $('#dp-amount-text').text(formatRupiah(dpAmount));
+            $('#final-amount-text').text(formatRupiah(finalAmount));
+            
+            // 6. Set input hidden
+            $('#package_price_hidden').val(packagePrice);
+            $('#addons_total_hidden').val(addonsTotal);
+            $('#grand_total').val(grandTotal);
+        }
+
+        // --- Event Listeners (Versi jQuery) ---
+        
+        // 1. Listener untuk Paket
+        $('#package_id').on('change', function() {
+            calculateTotal();
+            handleSessionVisibility();
+        });
+
+        // 2. Listener untuk Addons (gunakan class)
+        $('.addon-checkbox').on('change', calculateTotal);
+
+        // 3. Listener untuk Opsi Pembayaran
+        $('input[name="payment_option"]').on('change', calculateTotal);
+
+        // --- Panggilan Awal ---
+        // Panggil fungsi saat halaman dimuat untuk mengatur nilai awal
+        calculateTotal();
+        handleSessionVisibility();
+
+    }); // Akhir dari $(document).ready
+</script>

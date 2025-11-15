@@ -19,7 +19,7 @@ class UpcomingShootingController extends Controller
     {
         // PERUBAHAN: Status DP Verified ATAU Photographer Assigned
         // Agar yang sudah di-assign tetap muncul di list ini
-        $statuses = ['DP Verified', 'Photographer Assigned'];
+        $statuses = ['DP Verified', 'Photographer Assigned','Fully Paid'];
         
         $bookings = Booking::whereIn('status', $statuses)
                             ->with(['package', 'user.clientDetails', 'photographer'])
@@ -63,8 +63,33 @@ class UpcomingShootingController extends Controller
         // Gunakan ?? 0 untuk memastikan nilainya tidak null jika kosong
         $booking->photographer_other_costs = $request->photographer_other_costs ?? 0;
         
-        // 2. Update status booking
-        $booking->status = 'Photographer Assigned';
+       // ======================================================
+        // 3. LOGIKA YANG BENAR: Cek relasi payments
+        // ======================================================
+        
+        // Kita hitung ada berapa record payment yang sudah 'Verified'
+        // (Berdasarkan Payment.php, kolomnya adalah 'status')
+        $verifiedPaymentsCount = $booking->payments()
+                                          ->where('status', 'Verified')
+                                          ->count();
+
+        // Di sistem Anda (dari BookingController), setiap booking
+        // selalu dibuatkan 2 record payment (DP dan Final).
+        //
+        // Jika count == 2, berarti DP dan Final sudah 'Verified'
+        // (Ini adalah skenario Bayar Lunas di Awal)
+        
+        if ($verifiedPaymentsCount == 2) {
+            
+            // Skenario A: Bayar Lunas di Awal.
+            // Status booking langsung 'Fully Paid'.
+            $booking->status = 'Fully Paid'; 
+            
+        } else {            
+            // Skenario B: Bayar DP 50%. (Count == 1)
+            // Status booking menjadi 'Photographer Assigned'.
+            $booking->status = 'Photographer Assigned'; 
+        }
         
         $booking->save();
 
@@ -102,7 +127,7 @@ class UpcomingShootingController extends Controller
                 'amount' => 0, // Dibuat 0. Admin/Owner akan update manual saat memproses
                 'payment_type' => 'Refund', // Tipe baru dari ENUM
                 'status' => 'Pending',      // Status 'Pending'
-                'proof_image_path' => null,
+                'proof_url' => null,
             ]);
             
             DB::commit(); // Selesaikan transaksi

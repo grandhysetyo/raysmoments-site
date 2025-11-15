@@ -2,8 +2,16 @@
 
 @section('content')
 @php
-    $dpPayment = $payments->where('payment_type', 'DP')->first();
-    $finalPayment = $payments->where('payment_type', 'Final Payment')->first();
+    $dpPayment = $booking->payments->where('payment_type', 'DP')->first();
+    $finalPayment = $booking->payments->where('payment_type', 'Final Payment')->first();
+
+    // Menjumlahkan semua payment yang statusnya 'Verified'
+    $totalDibayar = $booking->payments
+                            ->where('status', 'Verified')
+                            ->sum('amount');
+                            
+    // Menghitung sisa tagihan
+    $sisaTagihan = $booking->grand_total - $totalDibayar;
 @endphp
 <div class="max-w-4xl mx-auto p-4 md:p-8 mt-6">
     <h1 class="text-3xl font-extrabold mb-8 text-gray-900 border-b pb-3">Detail Pelacakan Pesanan</h1>
@@ -171,7 +179,7 @@
                         @foreach($booking->bookingAddons as $bookingAddon)
                             <li class="flex justify-between">
                                 <span>{{ $bookingAddon->addon->name }}</span>
-                                <span class="font-medium text-gray-800">+ Rp {{ number_format($bookingAddon->total_price, 0) }}</span>
+                                <span class="font-medium text-gray-800">+ Rp {{ number_format($bookingAddon->grand_total, 0) }}</span>
                             </li>
                         @endforeach
                     </ul>
@@ -181,23 +189,25 @@
             {{-- DETAIL PEMBAYARAN --}}
             <div class="p-6 border-t border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Ringkasan Pembayaran</h3>
-                <div class="space-y-2 text-sm">
-                    <p class="flex justify-between">
-                        <span>Grand Total:</span>
-                        <span class="font-bold text-lg text-gray-900">Rp {{ number_format($booking->grand_total, 0) }}</span>
-                    </p>
-                    @php
-                        $totalPaid = $booking->payments->whereIn('status', ['Paid', 'Confirmed'])->sum('amount');
-                        $remainingBill = $booking->grand_total - $totalPaid;
-                    @endphp
-                    <p class="flex justify-between">
-                        <span>Total Dibayar:</span>
-                        <span class="font-medium text-green-600">Rp {{ number_format($totalPaid, 0) }}</span>
-                    </p>
-                    <p class="flex justify-between">
-                        <span>Sisa Tagihan:</span>
-                        <span class="font-bold text-red-600">Rp {{ number_format($remainingBill, 0) }}</span>
-                    </p>
+                <div class="space-y-3">
+            
+                    {{-- Grand Total --}}
+                    <div class="flex justify-between items-center text-gray-700">
+                        <span class="text-md">Grand Total:</span>
+                        <span class="text-md font-bold text-gray-900">Rp {{ number_format($booking->grand_total, 0, ',', '.') }}</span>
+                    </div>
+                    
+                    {{-- Total Dibayar (Sudah diperbaiki) --}}
+                    <div class="flex justify-between items-center text-green-600">
+                        <span class="text-md">Total Dibayar:</span>
+                        <span class="text-md font-bold">Rp {{ number_format($totalDibayar, 0, ',', '.') }}</span>
+                    </div>
+                    
+                    {{-- Sisa Tagihan (Sudah diperbaiki) --}}
+                    <div class="flex justify-between items-center text-red-600 border-t pt-3">
+                        <span class="text-lg font-bold">Sisa Tagihan:</span>
+                        <span class="text-lg font-bold">Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</span>
+                    </div>
                 </div>
 
                 <h4 class="text-md font-semibold text-gray-700 mt-6 mb-3">Riwayat Pembayaran:</h4>
@@ -222,8 +232,8 @@
                                     @php
                                         $paymentStatusColor = 'bg-gray-400';
                                         if ($payment->status === 'Pending') $paymentStatusColor = 'bg-yellow-400';
-                                        if ($payment->status === 'Confirmed' || $payment->status === 'Paid') $paymentStatusColor = 'bg-green-400';
-                                        if ($payment->status === 'Failed') $paymentStatusColor = 'bg-red-400';
+                                        if ($payment->status === 'Verified' || $payment->status === 'Paid') $paymentStatusColor = 'bg-green-400';
+                                        if ($payment->status === 'Rejected') $paymentStatusColor = 'bg-red-400';
                                     @endphp
                                     <span class="px-2 py-0.5 text-xs font-medium text-white {{ $paymentStatusColor }} rounded-full">
                                         {{ $payment->status }}
@@ -304,7 +314,7 @@
                     {{-- Tentukan Tipe Pembayaran (DP / Final) secara otomatis --}}
                     @php
                         $paymentType = ($booking->status === 'Awaiting DP') ? 'DP' : 'Final Payment';
-                        $minAmount = ($paymentType === 'DP') ? $booking->amount : $remainingBill;
+                        $minAmount = ($paymentType === 'DP') ? $booking->amount : $sisaTagihan;
                     @endphp
                     <input type="hidden" name="payment_type" value="{{ $paymentType }}">
 

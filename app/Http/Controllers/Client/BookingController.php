@@ -47,6 +47,7 @@ class BookingController extends Controller
             'addons.*' => 'exists:addons,id',
             'grand_total' => 'required|numeric|min:0', // Nilai dari JS
             'package_price_hidden' => 'required|numeric|min:0',
+            'payment_option' => 'required|string|in:dp,full'
         ]);
         
         // 1. Ambil data Addons untuk kalkulasi di backend
@@ -56,7 +57,6 @@ class BookingController extends Controller
         $packagePrice = $package->price;
         $addonsTotal = $selectedAddons->sum('price');
         $grandTotalFinal = $packagePrice + $addonsTotal;
-        $dpAmountFinal = $grandTotalFinal * 0.5; // Hitung DP 50%
 
         // 2. Final Security Check (Pastikan harga tidak dimanipulasi)
         if (floatval($validatedData['grand_total']) != $grandTotalFinal) {
@@ -100,11 +100,40 @@ class BookingController extends Controller
             ]);
 
             // D. BUAT PAYMENT (Record DP yang belum dibayarkan)
+            $paymentOption = $request->input('payment_option');
+            $dpAmount = 0;
+            $finalAmount = 0;
+
+            // HARUS GUNAKAN $grandTotalFinal YANG SUDAH DIHITUNG DI ATAS
+            if ($paymentOption === 'full') {
+                // Klien bayar lunas 100% di awal
+                // Kita "tipu" sistem dgn memasukkan 100% ke DP
+                $dpAmount = $grandTotalFinal; // <--- PERBAIKAN
+                $finalAmount = 0;
+                
+            } else {
+                // Alur normal, DP 50%
+                $dpAmount = $grandTotalFinal * 0.5; // <--- PERBAIKAN
+                $finalAmount = $grandTotalFinal * 0.5; // <--- PERBAIKAN
+            }
+
             $booking->payments()->create([
-                'amount' => $dpAmountFinal,
+                'amount' => $dpAmount,
                 'payment_type' => 'DP',
                 'status' => 'Pending',
+                'proof_url' => null, 
+                'verified_by' => null,
             ]);
+
+            $booking->payments()->create([
+                'payment_type' => 'Final', // (sesuai migrasi Anda)
+                'amount' => $finalAmount,
+                // Jika 0, status 'Verified', jika > 0, status 'Pending'
+                'status' => $finalAmount > 0 ? 'Pending' : 'Verified',
+                'proof_url' => null,
+                'verified_by' => null,
+            ]);
+            
 
             // E. SIMPAN DETAIL ADDON
             if ($selectedAddons->isNotEmpty()) {
@@ -113,10 +142,12 @@ class BookingController extends Controller
                         'addon_id' => $addon->id,
                         'quantity' => 1,
                         'price' => $addon->price,
-                        'total_price' => $addon->price,
+                        'grand_total' => $addon->price,
                     ]);
                 }
             }
+
+            
 
             DB::commit();
 

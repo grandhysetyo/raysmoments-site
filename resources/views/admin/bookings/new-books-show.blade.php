@@ -193,12 +193,6 @@
 
         {{-- Kolom 2: Tombol Aksi --}}
         <div>
-            {{-- 
-                PERUBAHAN LOGIKA IF: 
-                Ganti 'Awaiting DP' || 'DP Submitted' 
-                menjadi 'Pending' (sesuai status booking baru)
-                atau 'Awaiting DP' (jika admin mau verif manual)
-            --}}
             @if($booking->status === 'Pending' || $booking->status === 'Awaiting DP')
                 
                 @php
@@ -211,7 +205,7 @@
                 @endphp
 
                 {{-- Tampilkan tombol LUNAS jika $isFullPayment = true --}}
-                @if($isFullPayment && $dpPayment->proof_image_path)
+                @if($isFullPayment && $dpPayment->proof_url)
                     <h4 class="font-bold text-lg mb-3 text-purple-700">Aksi Verifikasi (LUNAS):</h4>
                     <div class="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                         <p class="text-sm text-purple-600 font-medium">
@@ -237,10 +231,10 @@
                             <input type="hidden" name="status" value="DP Verified">
                             <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50"
                                     {{-- Cek jika ada bukti --}}
-                                    @if(!($dpPayment && $dpPayment->proof_image_path)) disabled @endif>
+                                    @if(!($dpPayment && $dpPayment->proof_url)) disabled @endif>
                                 <i class="fas fa-check-circle mr-2"></i> KONFIRMASI DP
                             </button>
-                            @if(!($dpPayment && $dpPayment->proof_image_path))
+                            @if(!($dpPayment && $dpPayment->proof_url))
                                 <p class="text-xs text-red-500 mt-1">Tombol dinonaktifkan karena Bukti Transfer belum diunggah.</p>
                             @endif
                         </form>

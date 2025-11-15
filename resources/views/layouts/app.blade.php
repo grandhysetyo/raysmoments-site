@@ -8,6 +8,7 @@
     @vite('resources/css/app.css') 
     
     <script src="//unpkg.com/alpinejs" defer></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <style>
         /* Opsi: Sembunyikan scrollbar untuk sidebar di Chrome/Safari */

@@ -46,7 +46,7 @@
                         {{-- SEL BARU UNTUK TARIF --}}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             {{-- Kita loop data rates yang sudah di-load --}}
-                            @forelse($photographer->photographerProfile?->rates as $rate)
+                            @forelse($photographer->photographerProfile?->rates ?? [] as $rate)
                                 <div class="text-xs mb-1">
                                     <span class="font-medium">{{ $rate->city }}:</span>
                                     <span>Rp {{ number_format($rate->base_rate, 0, ',', '.') }}</span>

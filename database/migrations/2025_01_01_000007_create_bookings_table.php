@@ -19,8 +19,7 @@ return new class extends Migration {
             $table->decimal('package_price', 12, 2);
             $table->decimal('addons_total', 12, 2)->default(0);
             $table->decimal('grand_total', 12, 2)->default(0);
-            $table->enum('status', 
-            ['Awaiting DP','DP Verified','Awaiting Final Payment','Fully Paid','Photographer Assigned','Shooting Completed','Originals Delivered','Edits In Progress','Edits Delivered','Project Closed'])->default('Booking');
+            $table->enum('status', ['Awaiting DP','DP Verified','Awaiting Final Payment','Fully Paid','Photographer Assigned','Shooting Completed','Originals Delivered','Edits In Progress','Edits Delivered','Project Closed'])->default('Awaiting DP');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

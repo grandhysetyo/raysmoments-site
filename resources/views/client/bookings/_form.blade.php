@@ -172,24 +172,73 @@
               <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">
                   {{ isset($booking) ? '4. Ringkasan Harga (Baru)' : '4. Ringkasan Pembayaran' }}
               </h2>
-              
-              <div class="space-y-3">
-                  <div class="flex justify-between text-base text-gray-600 border-b pb-2">
-                      <span>Harga Paket:</span>
-                      <span id="package_price" class="font-semibold">Rp 0</span>
-                      <input type="hidden" name="package_price_hidden" id="package_price_hidden">
-                  </div>
-                  <div class="flex justify-between text-base text-gray-600 border-b pb-2">
-                      <span>Total Add-ons:</span>
-                      <span id="addons_total" class="font-semibold">Rp 0</span>
-                      <input type="hidden" name="addons_total_hidden" id="addons_total_hidden">
-                  </div>
-                  <div class="flex justify-between text-xl font-bold text-gray-900 border-t pt-3">
-                      <span>Grand Total:</span>
-                      <span id="grand_total_display" class="text-red-600">Rp 0</span>
-                      <input type="hidden" name="grand_total" id="grand_total_hidden"> 
-                  </div>
-              </div>
+              <div class="mb-5">
+                <label class="block text-lg font-semibold text-gray-800">Pilihan Pembayaran Awal</label>
+                <p class="text-sm text-gray-500 mb-3">Pilih metode pembayaran awal Anda.</p>
+                <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-2 sm:space-y-0">
+                    
+                    {{-- Opsi 1: Bayar DP --}}
+                    <label for="pay_dp" class="flex-1 flex items-center p-3 border rounded-lg cursor-pointer bg-gray-50 hover:border-indigo-500">
+                        <input type="radio" name="payment_option" id="pay_dp" value="dp" class="text-indigo-600 focus:ring-indigo-500" checked>
+                        <span class="ml-3">
+                            <span class="block font-medium text-gray-700">Bayar DP (50%)</span>
+                        </span>
+                    </label>
+                    
+                    {{-- Opsi 2: Bayar Lunas --}}
+                    <label for="pay_full" class="flex-1 flex items-center p-3 border rounded-lg cursor-pointer bg-gray-50 hover:border-indigo-500">
+                        <input type="radio" name="payment_option" id="pay_full" value="full" class="text-indigo-600 focus:ring-indigo-500">
+                        <span class="ml-3">
+                            <span class="block font-medium text-gray-700">Bayar Lunas (100%)</span>
+                        </span>
+                    </label>
+                </div>
+                @error('payment_option')
+                    <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="space-y-3 border-t pt-4">
+                {{-- Harga Paket (Sudah Ada) --}}
+                <div class="flex justify-between text-base text-gray-600">
+                    <span>Harga Paket:</span>
+                    <span id="package_price" class="font-semibold">Rp 0</span>
+                    {{-- (Input hidden Anda biarkan) --}}
+                    <input type="hidden" name="package_price_hidden" id="package_price_hidden">
+                </div>
+                
+                {{-- Total Add-ons (Sudah Ada) --}}
+                <div class="flex justify-between text-base text-gray-600 border-b pb-2">
+                    <span>Total Add-ons:</span>
+                    <span id="addons_total" class="font-semibold">Rp 0</span>
+                    {{-- (Input hidden Anda biarkan) --}}
+                    <input type="hidden" name="addons_total_hidden" id="addons_total_hidden">
+                </div>
+                
+                {{-- Grand Total (Sudah Ada) --}}
+                <div class="flex justify-between text-xl font-bold text-gray-900 pt-2">
+                    <span>Grand Total:</span>
+                    <span id="grand_total_display" class="text-red-600">Rp 0</span>
+                    {{-- (Input hidden Anda biarkan) --}}
+                    <input type="hidden" name="grand_total" id="grand_total"> 
+                </div>
+
+                {{-- ========================================================== --}}
+                {{-- BARIS BARU YANG KITA TAMBAHKAN --}}
+                {{-- ========================================================== --}}
+                <div class="border-t pt-3 space-y-1">
+                    <div class="flex justify-between text-md font-semibold text-blue-600">
+                        <span id="dp-label-text">Bayar DP (50%):</span>
+                        <span id="dp-amount-text">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between text-md font-semibold text-gray-600">
+                        <span id="final-label-text">Sisa Tagihan (50%):</span>
+                        <span id="final-amount-text">Rp 0</span>
+                    </div>
+                </div>
+                {{-- ========================================================== --}}
+
+            </div>
   
               {{-- Tombol Submit Dinamis Diletakkan di Sini --}}
               <button type="submit" class="w-full mt-6 px-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition duration-150 shadow-md">

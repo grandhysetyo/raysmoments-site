@@ -16,11 +16,9 @@ class PhotographerController extends Controller
     public function index()
     {
         $photographers = User::where('role', 'photographer')
-                             // --- PERBARUI BARIS INI ---
-                             ->with('photographerProfile.rates') // Load profile DAN rates di dalam profile
-                             // -------------------------
-                             ->latest()
-                             ->paginate(10);
+                            ->with('photographerProfile.rates') 
+                            ->orderBy('created_at', 'desc')
+                            ->paginate(10);
 
         return view('admin.photographers.index', compact('photographers'));
     }

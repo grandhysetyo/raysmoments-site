@@ -71,7 +71,8 @@ class AdminPaymentsController extends Controller
     {
         // 1. Temukan kedua record payment
         $dpPayment = $booking->payments()->where('payment_type', 'DP')->latest()->first();
-        $finalPayment = $booking->payments()->where('payment_type', 'Final Payment')->latest()->first();
+        // Pastikan menggunakan 'Final' sesuai database, bukan 'Final Payment'
+        $finalPayment = $booking->payments()->where('payment_type', 'Final')->latest()->first();
 
         if (!$dpPayment) {
             return back()->with('error', 'Gagal menemukan data DP payment.');
@@ -80,28 +81,50 @@ class AdminPaymentsController extends Controller
         try {
             DB::beginTransaction();
             
-            // 2. Update status Booking langsung ke 'Fully Paid'
-            // Ini akan membuat booking melompati alur 'Awaiting Final Payment'
-            $booking->status = 'Fully Paid';
+            // ==============================================================
+            // LOGIKA CERDAS: CEK POSISI BOOKING
+            // ==============================================================
+            
+            // Cek apakah fotografer sudah di-assign?
+            if ($booking->photographer_id) {
+                // KASUS 1: BOOKING SUDAH DI LIST PROJECT (Skenario Pelunasan Akhir)
+                // Jika fotografer sudah ada, JANGAN kembalikan status ke 'Awaiting Photographer'.
+                // Biarkan statusnya tetap seperti sekarang (misal: 'Shooting') 
+                // agar dia tetap berada di menu "List Project".
+                
+                // Opsional: Anda bisa memaksa status ke 'Shooting' atau 'Completed' jika diinginkan.
+                // $booking->status = 'Shooting'; 
+                
+                $booking->status = 'Fully Paid';
+                $finalPayment->update(['status' => 'Verified']);                
+                
+            } else {
+                // KASUS 2: BOOKING BARU (Skenario Bayar Lunas di Awal / New Book)
+                // Karena belum ada fotografer, kita harus lempar ke "Upcoming Shoot"
+                // untuk proses assign fotografer.
+                
+                $booking->status = 'DP Verified';
+                $dpPayment->status = 'Verified';
+            }
+            
+            // Simpan perubahan status booking
             $booking->save();
 
-            // 3. Konfirmasi DP Payment (yang ada bukti transfernya)
-            $dpPayment->status = 'Confirmed';
+            // ==============================================================
+
+             // Simpan perubahan status payment
             $dpPayment->save();
-
-            // 4. Konfirmasi Final Payment (meski tidak ada bukti)
-            // Karena admin sudah memverifikasi pembayaran lunas
-            if ($finalPayment) {
-                $finalPayment->status = 'Confirmed';
-                // Opsional: salin jumlah/bukti agar konsisten
-                // $finalPayment->amount = $booking->grand_total - $dpPayment->amount;
-                $finalPayment->save();
-            }
-
+            $finalPayment->save();
             DB::commit();
             
-            return redirect()->route('admin.new-books.index')
-                             ->with('success', 'Booking ' . $booking->order_code . ' telah dikonfirmasi LUNAS.');
+            // Tentukan pesan sukses berdasarkan kondisi
+            $msg = $booking->photographer_id 
+                ? 'Pelunasan berhasil diverifikasi. Project tetap berjalan.' 
+                : 'Pembayaran Lunas diverifikasi. Silakan assign fotografer di menu Upcoming Shoot.';
+
+            // Redirect kembali (bisa ke index new book atau back)
+            return redirect()->route('admin.new-books.index')->with('success', $msg);
+            
 
         } catch (\Exception $e) {
             DB::rollBack();

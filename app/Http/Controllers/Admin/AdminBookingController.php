@@ -134,7 +134,7 @@ class AdminBookingController extends Controller
                         'addon_id' => $addon->id,
                         'quantity' => 1, // Asumsi quantity 1 dari checkbox
                         'price' => $addon->price, // Harga unit addon
-                        'total_price' => $addon->price, // Total harga baris ini (harga * 1)
+                        'grand_total' => $addon->price, // Total harga baris ini (harga * 1)
                     ]);
                 }
             }
@@ -267,7 +267,7 @@ class AdminBookingController extends Controller
                         'addon_id' => $addon->id,
                         'quantity' => 1, // Asumsi Quantity 1
                         'price' => $addon->price,
-                        'total_price' => $addon->price, // Harga total baris ini
+                        'grand_total' => $addon->price, // Harga total baris ini
                     ]);
                 }
             }

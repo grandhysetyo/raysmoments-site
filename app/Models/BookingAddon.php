@@ -17,12 +17,12 @@ class BookingAddon extends Model
         'addon_id',
         'quantity',
         'price',
-        'total_price',
+        'grand_total',
     ];
     
     protected $casts = [
         'price' => 'decimal:2',
-        'total_price' => 'decimal:2',
+        'grand_total' => 'decimal:2',
         'quantity' => 'integer',
     ];
     

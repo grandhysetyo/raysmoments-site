@@ -14,7 +14,7 @@
     $selectedAddonIds = $booking->bookingAddons->pluck('addon_id')->toArray() ?? old('addons', []);
 
     // Ambil nilai Grand Total yang akan ditampilkan (untuk edit, ambil dari DB)
-    $grandTotalValue = old('total_price', $booking->grand_total ?? '');
+    $grandTotalValue = old('grand_total', $booking->grand_total ?? '');
     $dpAmountValue = old('dp_amount', $booking->grand_total ? ($booking->grand_total * 0.5) : '');
 @endphp
 

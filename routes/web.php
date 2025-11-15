@@ -87,6 +87,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     // Aksi Verifikasi DP
     Route::post('/payments/{booking}/update-dp-status', [AdminPaymentsController::class, 'verifyDP'])
              ->name('payments.verify_dp');
+    Route::post('/payments/{booking}/update-fullpayments-status', [AdminPaymentsController::class, 'verifyFullPayment'])
+    ->name('payments.verify_full');
     
      // Upcoming Shooting
     // (Nama route: admin.upcoming.*)

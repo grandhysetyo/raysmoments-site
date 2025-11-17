@@ -61,13 +61,13 @@
             <h4 class="font-bold text-lg mb-3">Bukti Transfer Klien:</h4>
             
             {{-- Gunakan $finalPayment (dari controller) --}}
-            @if($finalPayment && $finalPayment->proof_image_path)
+            @if($finalPayment && $finalPayment->proof_url)
                 <p class="text-sm text-gray-600 mb-2">
                     Status: <strong class="text-blue-600">{{ $finalPayment->status }}</strong> | 
                     Jumlah: <strong class="text-blue-600">Rp {{ number_format($finalPayment->amount, 0) }}</strong>
                 </p>
-                <a href="{{ Storage::url($finalPayment->proof_image_path) }}" target="_blank" class="block border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:opacity-90 transition duration-150">
-                    <img src="{{ Storage::url($finalPayment->proof_image_path) }}" alt="Bukti Transfer Final" class="w-full h-auto object-cover">
+                <a href="{{ Storage::url($finalPayment->proof_url) }}" target="_blank" class="block border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:opacity-90 transition duration-150">
+                    <img src="{{ Storage::url($finalPayment->proof_url) }}" alt="Bukti Transfer Final" class="w-full h-auto object-cover">
                 </a>
                 <p class="text-sm text-gray-500 mt-2">Klik gambar untuk melihat ukuran penuh.</p>
             @else
@@ -83,18 +83,18 @@
             <div class="space-y-4">
                 
                 {{-- Form 1: Konfirmasi (Status: Fully Paid) --}}
-                <form action="{{ route('admin.projects.verify_final', $booking) }}" method="POST">
+                <form action="{{ route('admin.payments.verify_full', $booking) }}" method="POST">
                     @csrf
-                    <input type="hidden" name="action" value="verify">
+                    <input type="hidden" name="status" value="Fully Paid">
                     <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200">
                         <i class="fas fa-check-circle mr-2"></i> KONFIRMASI (LUNAS)
                     </button>
                 </form>
 
                 {{-- Form 2: Tolak Pembayaran (Status: Awaiting Final Payment) --}}
-                <form action="{{ route('admin.projects.verify_final', $booking) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menolak bukti ini? Klien harus mengupload ulang.');">
+                <form action="{{ route('admin.payments.verify_full', $booking) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menolak bukti ini? Klien harus mengupload ulang.');">
                     @csrf
-                    <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="status" value="Cancelled">
                     <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200">
                         <i class="fas fa-times-circle mr-2"></i> TOLAK BUKTI
                     </button>

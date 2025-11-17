@@ -23,7 +23,7 @@ class PaymentController extends Controller
 
         // 2. Validasi input
         $validated = $request->validate([
-            'payment_type' => 'required|string|in:DP,Final Payment',
+            'payment_type' => 'required|string|in:DP,Final',
             'amount' => 'required|numeric|min:1',
             'proof_url' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -72,20 +72,15 @@ class PaymentController extends Controller
                 'status' => 'Pending' // Set (atau set ulang) status ke 'Pending' untuk direview Admin
             ]);
 
-            if ($validated['payment_type'] === 'DP') {
+            if ($validated['payment_type'] === 'DP' && $booking->status === 'Awaiting DP') {
                 // Jika ini DP, set status booking ke 'Pending' (untuk Verifikasi DP)
                 $booking->status = 'Pending';
-            } elseif ($validated['payment_type'] === 'Final Payment') {
+            } elseif ($validated['payment_type'] === 'Final' && $booking->status === 'Awaiting Final Payment') {
                 // Jika ini Final Payment, set status ke 'Pending Final Payment'
                 $booking->status = 'Pending Final Payment';
             }
 
-            // 6. Update status booking
-            if ($booking->status === 'Awaiting DP' || $booking->status === 'Awaiting Final Payment' || $booking->status === 'Pending') {
-                $booking->status = 'Pending'; // Ubah status booking agar tombol upload hilang
-                $booking->save();
-            }
-
+            $booking->save();
             // 7. Kembalikan ke halaman tracking
             return redirect()->route('tracking.show', $booking->order_code)
                              ->with('success', 'Bukti pembayaran berhasil diupload dan sedang menunggu konfirmasi admin.');

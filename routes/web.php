@@ -90,7 +90,12 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('/payments/{booking}/update-fullpayments-status', [AdminPaymentsController::class, 'verifyFullPayment'])
     ->name('payments.verify_full');
     
-     // Upcoming Shooting
+    Route::get('/change-requests', [App\Http\Controllers\Admin\AdminChangeRequestController::class, 'index'])->name('change-requests.index');
+    Route::get('/change-requests/{id}', [App\Http\Controllers\Admin\AdminChangeRequestController::class, 'show'])->name('change-requests.show');
+    Route::post('/change-requests/{id}/approve', [App\Http\Controllers\Admin\AdminChangeRequestController::class, 'approve'])->name('change-requests.approve');
+    Route::post('/change-requests/{id}/reject', [App\Http\Controllers\Admin\AdminChangeRequestController::class, 'reject'])->name('change-requests.reject');
+    
+    // Upcoming Shooting
     // (Nama route: admin.upcoming.*)
     Route::prefix('upcoming')->name('upcoming.')->group(function () {
         Route::get('/', [UpcomingShootingController::class, 'index'])

@@ -19,7 +19,7 @@ class UpcomingShootingController extends Controller
     {
         // PERUBAHAN: Status DP Verified ATAU Photographer Assigned
         // Agar yang sudah di-assign tetap muncul di list ini
-        $statuses = ['DP Verified', 'Photographer Assigned','Fully Paid'];
+        $statuses = ['DP Verified', 'Awaiting Final Payment','Pending Final Payment','Fully Paid'];
         
         $bookings = Booking::whereIn('status', $statuses)
                             ->with(['package', 'user.clientDetails', 'photographer'])
@@ -88,7 +88,7 @@ class UpcomingShootingController extends Controller
         } else {            
             // Skenario B: Bayar DP 50%. (Count == 1)
             // Status booking menjadi 'Photographer Assigned'.
-            $booking->status = 'Photographer Assigned'; 
+            $booking->status = 'Awaiting Final Payment'; 
         }
         
         $booking->save();

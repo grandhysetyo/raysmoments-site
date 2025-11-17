@@ -25,7 +25,7 @@ class BookingChangeRequestController extends Controller
         // 2. Cek apakah klien sudah melakukan pembayaran DP
         //    Kita anggap 'Pending' (menunggu konfirmasi) juga sudah dihitung
         $hasPaidDP = $booking->payments()
-                            ->whereIn('status', ['Paid', 'Confirmed', 'Pending'])
+                            ->whereIn('status', ['Verified'])
                             ->exists();
 
         // 3. Dapatkan harga paket saat ini
@@ -67,91 +67,91 @@ class BookingChangeRequestController extends Controller
     {
         $booking = Booking::where('order_code', $order_code)->firstOrFail();
 
-        $validatedData = $request->validate([
-            'package_id' => 'required|exists:packages,id',
+        $validated = $request->validate([
+            'package_id'     => 'required|exists:packages,id',
+            'addons'         => 'nullable|array',           // Validasi array addons
+            'addons.*'       => 'exists:addons,id',
             'event_date' => 'required|date|after_or_equal:today',
-            // --- BARU: Validasi Waktu Sesi (konsisten dengan form booking) ---
             'session_1_time' => 'required|date_format:H:i',
             'session_2_time' => 'nullable|date_format:H:i',
             // ---
             'event_location' => 'required|string|max:255',
             'event_city' => 'required|string|max:255',
-            'notes' => 'nullable|string',
+            'reason'         => 'required|string|max:1000',
             'addons' => 'nullable|array',
             'addons.*' => 'exists:addons,id',
         ]);
 
-        // --- LOGIKA VALIDASI SERVER: BLOKIR DOWNGRADE ---
-        
-        // 1. Cek status DP lagi di sisi server
-        $booking->load('package', 'payments'); // Pastikan data terbaru
-        $hasPaidDP = $booking->payments()
-                            ->whereIn('status', ['Paid', 'Confirmed', 'Pending'])
-                            ->exists();
-
-        if ($hasPaidDP) {
-            $currentPrice = $booking->package->price;
-            
-            // Ambil paket BARU yang diminta
-            $newPackage = Package::findOrFail($validatedData['package_id']);
-            $newPrice = $newPackage->price;
-
-            // 2. Jika paket baru lebih murah, tolak
-            if ($newPrice < $currentPrice) {
-                return back()->with('error', 'Gagal mengajukan perubahan. Anda tidak dapat melakukan downgrade paket setelah pembayaran DP diproses.')
-                             ->withInput();
-            }
+        if (BookingChangeRequest::where('booking_id', $booking->id)->where('status', 'Pending')->exists()) {
+            return back()->with('error', 'Permintaan sebelumnya masih diproses.');
         }
-        // --- AKHIR LOGIKA VALIDASI SERVER ---
-
+    
         DB::beginTransaction();
         try {
-            // Kalkulasi ulang harga berdasarkan data BARU
-            $newPackage = Package::findOrFail($validatedData['package_id']);
-            $selectedAddons = Addon::whereIn('id', $validatedData['addons'] ?? [])->get();
+            // 1. HITUNG UANG YANG SUDAH MASUK
+            $totalPaidVerified = $booking->payments()->where('status', 'Verified')->sum('amount');
+    
+            // 2. HITUNG HARGA BARU (FIXED LOGIC)
+            // Ambil harga Paket Baru
+            $newPackage = Package::findOrFail($validated['package_id']);
             
-            $newPackagePrice = $newPackage->price;
-            $newAddonsTotal = $selectedAddons->sum('price');
-            $newGrandTotal = $newPackagePrice + $newAddonsTotal;
-
-            // Kumpulkan semua data yang diminta untuk disimpan sebagai JSON
-            $requestedData = [
-                'package_id' => $newPackage->id,
-                'package_name' => $newPackage->name,
-                'event_date' => $validatedData['event_date'],
-                // --- BARU: Simpan data sesi ---
-                'session_1_time' => $validatedData['session_1_time'],
-                'session_2_time' => $validatedData['session_2_time'] ?? null,
-                // ---
-                'event_location' => $validatedData['event_location'],
-                'event_city' => $validatedData['event_city'],
-                'notes' => $validatedData['notes'],
-                'addons' => $selectedAddons->map(function($addon) {
-                    return ['id' => $addon->id, 'name' => $addon->name, 'price' => $addon->price];
-                })->toArray(),
-                'new_package_price' => $newPackagePrice,
-                'new_addons_total' => $newAddonsTotal,
-                'new_grand_total' => $newGrandTotal,
-            ];
-
-            // Buat entri permintaan perubahan
+            // Ambil harga Add-ons dari INPUT USER (Bukan database lama)
+            $selectedAddonIds = $request->input('addons', []); 
+            $newAddonsTotal = 0;
+            
+            if (!empty($selectedAddonIds)) {
+                $newAddonsTotal = Addon::whereIn('id', $selectedAddonIds)->sum('price');
+            }
+    
+            // Grand Total Baru = Paket Baru + Addons Baru
+            $newGrandTotal = $newPackage->price + $newAddonsTotal;
+    
+            // 3. LOGIKA KALKULASI SELISIH (Sama seperti sebelumnya)
+            $additionalCost = 0;
+    
+            if ($totalPaidVerified > 0) {
+                // Jika sudah bayar DP/Lunas
+                $isFullyPaid = in_array($booking->status, ['Final Payment Verified', 'Project Completed', 'Project Finished']);
+    
+                if ($isFullyPaid) {
+                    $additionalCost = $newGrandTotal - $totalPaidVerified;
+                } else {
+                    // Kejar target DP 50% dari total baru
+                    $targetNewDP = $newGrandTotal * 0.50;
+                    if ($targetNewDP > $totalPaidVerified) {
+                        $additionalCost = $targetNewDP - $totalPaidVerified;
+                    }
+                }
+            }
+            // Jika belum bayar ($totalPaidVerified == 0), cost tetap 0 (nanti update tagihan DP)
+    
+            $additionalCost = max(0, $additionalCost);
+    
+            // 4. SIMPAN REQUEST
             BookingChangeRequest::create([
                 'booking_id' => $booking->id,
-                'client_id' => auth()->id(),
-                'requested_data' => json_encode($requestedData),
+                'new_package_id' => $newPackage->id,
+                'new_addons' => json_encode($selectedAddonIds),
+                'additional_cost' => $additionalCost,
+                
+                'old_event_date' => $booking->event_date,
+                'old_event_location' => $booking->event_location,
+                'old_event_city' => $booking->event_city,
+                
+                'new_event_date' => $validated['event_date'],
+                'new_event_location' => $validated['event_location'],
+                'new_event_city' => $validated['event_city'],
+                
+                'reason' => $validated['reason'],
                 'status' => 'Pending',
             ]);
-
+    
             DB::commit();
-
-            // Arahkan klien kembali ke halaman tracking
-            return redirect()->route('tracking.show', $booking->order_code)
-                             ->with('success', 'Permintaan perubahan jadwal dan detail telah diajukan dan sedang ditinjau oleh Admin.');
-
+            return redirect()->route('tracking.show', $booking->order_code)->with('success', 'Permintaan diajukan.');
+    
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Gagal menyimpan permintaan perubahan: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat mengajukan permintaan. Silakan coba lagi.');
+            return back()->with('error', 'Error: ' . $e->getMessage());
         }
     }
 }

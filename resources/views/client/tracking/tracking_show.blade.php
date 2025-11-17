@@ -3,7 +3,7 @@
 @section('content')
 @php
     $dpPayment = $booking->payments->where('payment_type', 'DP')->first();
-    $finalPayment = $booking->payments->where('payment_type', 'Final Payment')->first();
+    $finalPayment = $booking->payments->where('payment_type', 'Final')->first();
 
     // Menjumlahkan semua payment yang statusnya 'Verified'
     $totalDibayar = $booking->payments
@@ -313,7 +313,7 @@
                     
                     {{-- Tentukan Tipe Pembayaran (DP / Final) secara otomatis --}}
                     @php
-                        $paymentType = ($booking->status === 'Awaiting DP') ? 'DP' : 'Final Payment';
+                        $paymentType = ($booking->status === 'Awaiting DP') ? 'DP' : 'Final';
                         $minAmount = ($paymentType === 'DP') ? $booking->amount : $sisaTagihan;
                     @endphp
                     <input type="hidden" name="payment_type" value="{{ $paymentType }}">

@@ -43,7 +43,7 @@
                     Dashboard
                 </a>
 
-                <div x-data="{ open: {{ request()->routeIs('admin.new-books*') || request()->routeIs('admin.upcoming*') || request()->routeIs('admin.projects*') ? 'true' : 'false' }} }">
+                <div x-data="{ open: {{ request()->routeIs('admin.new-books*') || request()->routeIs('admin.upcoming*') || request()->routeIs('admin.projects*') || request()->routeIs('admin.change-requests*')? 'true' : 'false' }} }">
                     <button @click="open = !open" 
                             class="w-full flex justify-between items-center px-4 py-2.5 rounded-lg transition duration-200 hover:bg-gray-700 hover:text-white">
                         <span class="flex items-center">
@@ -71,6 +71,21 @@
                            class="block px-4 py-2 rounded-lg text-sm 
                                   {{ request()->routeIs('admin.projects.index*') ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 hover:text-white' }}">
                             List Project 
+                        </a>
+                        <a href="{{ route('admin.change-requests.index') }}"
+                           class="block px-4 py-2 rounded-lg text-sm 
+                                  {{ request()->routeIs('admin.change-requests.index*') ? 'bg-gray-700 text-white' : 'hover:bg-gray-700 hover:text-white' }}">
+                                <i class="far fa-circle nav-icon text-warning"></i>
+                                <p>
+                                    Change Requests
+                                    {{-- Opsional: Badge Jumlah Pending --}}
+                                    @php
+                                        $pendingCount = \App\Models\BookingChangeRequest::where('status', 'Pending')->count();
+                                    @endphp
+                                    @if($pendingCount > 0)
+                                        <span class="right badge badge-warning">{{ $pendingCount }}</span>
+                                    @endif
+                                </p>
                         </a>
                     </div>
                 </div>

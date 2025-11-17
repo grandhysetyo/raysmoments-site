@@ -51,7 +51,7 @@ class ProjectController extends Controller
 
         // Ambil data Final Payment yang pending
         $finalPayment = $booking->payments()
-                                ->where('payment_type', 'Final Payment')
+                                ->where('payment_type', 'Final')
                                 ->where('status', 'Pending')
                                 ->latest()
                                 ->first();

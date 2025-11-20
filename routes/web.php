@@ -13,7 +13,6 @@ use App\Http\Controllers\Admin\PhotographerController;
 use App\Http\Controllers\Admin\PhotographerRateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\NewBookingController;
-use App\Http\Controllers\Client\BookingChangeRequestController;
 use App\Http\Controllers\Admin\UpcomingShootingController;
 use App\Http\Controllers\Admin\AdminBookingController;
 use App\Http\Controllers\Admin\AdminPaymentsController;
@@ -49,10 +48,8 @@ Route::post('bookings', [BookingController::class,'store'])->name('bookings.stor
 Route::get('bookings/{booking}', [BookingController::class,'show'])->name('bookings.show');
 
 // Permintaan Perubahan
-Route::get('/bookings/{order_code}/request-change', [BookingChangeRequestController::class, 'show'])
-    ->name('request_change.show');
-Route::post('/bookings/{order_code}/request-change', [BookingChangeRequestController::class, 'store'])
-    ->name('request_change.store');
+Route::get('/bookings/{order_code}/request-change', [BookingController::class, 'edit'])->name('edit.show');
+Route::post('/bookings/{order_code}/request-change', [BookingController::class, 'update'])->name('edit.store');
 
 // Tracking status
 Route::get('/track', [TrackingController::class, 'index'])->name('tracking.index');

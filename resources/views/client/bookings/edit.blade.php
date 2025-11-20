@@ -19,7 +19,7 @@
     </div>
     @endif
 
-    <form action="{{ route('request_change.store', $booking->order_code) }}" method="POST">
+    <form action="{{ route('edit.store', $booking->order_code) }}" method="POST">
         
         {{-- Include partial form YANG SAMA.
              Variabel $booking, $packages, $addons, $currentAddonIds 

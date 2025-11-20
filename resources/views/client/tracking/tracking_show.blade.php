@@ -291,7 +291,7 @@
                 <button type="button" id="cancelModalBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
                     Batal
                 </button>
-                <a href="{{ route('request_change.show', $booking->order_code) }}"
+                <a href="{{ route('edit.show', $booking->order_code) }}"
                    class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium">
                     Ya, Lanjutkan
                 </a>

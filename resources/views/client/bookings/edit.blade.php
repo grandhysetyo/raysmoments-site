@@ -15,21 +15,19 @@
     
     @if($hasPaidDP)
     <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg relative mb-4">
-        <strong class="font-bold">Catatan:</strong> Anda hanya dapat mengubah ke paket dengan harga yang sama atau lebih tinggi.
+        <strong class="font-bold">Info Upgrade:</strong> Paket Anda sebelumnya seharga 
+        <span class="font-mono font-bold">Rp {{ number_format($booking->package->price, 0, ',', '.') }}</span>.
+        <br>Anda hanya dapat memilih paket dengan harga yang setara atau lebih tinggi.
     </div>
     @endif
 
     <form action="{{ route('edit.store', $booking->order_code) }}" method="POST">
-        
-        {{-- Include partial form YANG SAMA.
-             Variabel $booking, $packages, $addons, $currentAddonIds 
-             dilewatkan oleh Controller dan otomatis terpakai oleh partial. --}}
+        {{-- Variabel isEditMode=true sudah dikirim dari Controller --}}
         @include('client.bookings._form')
-        
     </form>
 </div>
 
-{{-- Sertakan JS YANG SAMA --}}
+{{-- Sertakan JS --}}
 @include('client.bookings._form_js')
 
 @endsection

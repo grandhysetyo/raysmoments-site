@@ -21,7 +21,7 @@ class BookingController extends Controller
     {
         $packages = Package::where('is_active', true)->get();
         $addons = Addon::where('is_active', true)->get();
-        return view('client.bookings.create', compact('packages','addons'));
+        return view('client.bookings.create', compact('packages','addons'))->with('isEditMode', false);
     }
 
     public function store(Request $request)
@@ -173,11 +173,14 @@ class BookingController extends Controller
         // 1. Muat relasi yang diperlukan
         $booking->load('package', 'payments', 'bookingAddons');
 
-        // 2. Cek apakah klien sudah melakukan pembayaran DP
-        //    Kita anggap 'Pending' (menunggu konfirmasi) juga sudah dihitung
-        $hasPaidDP = $booking->payments()
-                            ->whereIn('status', ['Verified'])
-                            ->exists();
+        // 2. Cek total pembayaran yang SUDAH VERIFIED (Uang masuk)
+        $totalPaidVerified = $booking->payments()
+                            ->where('status', 'Verified') // Pastikan status sesuai enum database Anda
+                            ->sum('amount');
+
+        // Cek apakah DP dianggap lunas (berdasarkan nominal atau status)
+        // Logic: Jika ada pembayaran verified > 0, kita anggap sudah bayar DP
+        $hasPaidDP = $totalPaidVerified > 0;
 
         // 3. Dapatkan harga paket saat ini
         $currentPrice = $booking->package->price;
@@ -185,21 +188,14 @@ class BookingController extends Controller
         // 4. Siapkan query untuk paket yang tersedia
         $availablePackages = Package::where('is_active', true);
 
-        // --- LOGIKA BARU: BLOKIR DOWNGRADE ---
-        // Jika sudah bayar DP, hanya tampilkan paket dengan harga
-        // SAMA ATAU LEBIH MAHAL (>=)
+        // --- LOGIKA: BLOKIR DOWNGRADE ---
+        // Hanya tampilkan paket dengan harga >= paket lama jika sudah bayar DP
         if ($hasPaidDP) {
             $availablePackages->where('price', '>=', $currentPrice);
         }
-        // --- AKHIR LOGIKA BARU ---
 
-        // Ambil hasil paket yang sudah difilter
         $packages = $availablePackages->get();
-        
-        // Ambil semua addons
         $addons = Addon::where('is_active', true)->get();
-
-        // Ambil addons yang saat ini dipilih
         $currentAddonIds = $booking->bookingAddons->pluck('addon_id')->toArray();
 
         return view('client.bookings.edit', compact(
@@ -207,8 +203,9 @@ class BookingController extends Controller
             'packages', 
             'addons', 
             'currentAddonIds',
-            'hasPaidDP' // Kirim status DP untuk info di view (opsional)
-        ));
+            'hasPaidDP',
+            'totalPaidVerified' // <--- TAMBAHKAN INI untuk JS
+        ))->with('isEditMode', true);
     }
     public function update(Request $request, $order_code)
     {

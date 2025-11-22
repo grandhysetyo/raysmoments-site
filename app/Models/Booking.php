@@ -76,5 +76,9 @@ class Booking extends Model
     {
         return $this->hasMany(ProjectPhoto::class);
     }
+    public function changeRequests()
+    {
+        return $this->hasMany(BookingChangeRequest::class);
+    }
 }
 

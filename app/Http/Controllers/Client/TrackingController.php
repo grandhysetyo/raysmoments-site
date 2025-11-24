@@ -19,23 +19,47 @@ class TrackingController extends Controller
     /**
      * Menampilkan detail booking berdasarkan order code.
      */
-    public function show($order_code)
+    public function show(Request $request, $order_code = null)
     {
-        // Cari booking berdasarkan order_code
-        $booking = Booking::where('order_code', $order_code)
-                          ->with(['package', 'user.clientDetails', 'bookingAddons.addon', 'payments'])
+        $code = $order_code ?? $request->input('order_code');
+
+        if (!$code) {
+            return redirect()->route('tracking.index')->with('error', 'Masukkan Kode Pesanan.');
+        }
+
+        // 1. Load relasi 'changeRequests' agar kita bisa cek statusnya
+        $booking = Booking::where('order_code', $code)
+                          ->with([
+                              'package', 
+                              'payments', 
+                              'bookingAddons.addon',
+                              // AMBIL DATA REQUEST TERBARU
+                              'changeRequests' => function($query) {
+                                  $query->latest(); 
+                              }
+                          ])
                           ->first();
 
         if (!$booking) {
-            // Jika booking tidak ditemukan
-            return redirect()->route('tracking.index')
-                             ->with('error', 'Kode pesanan tidak ditemukan. Harap periksa kembali.');
+            return redirect()->route('tracking.index')->with('error', 'Pesanan tidak ditemukan.');
         }
 
-        // Tentukan data timeline (sesuaikan dengan ENUM status Anda)
+        // 2. Ambil request terbaru untuk dikirim ke View
+        $latestChangeRequest = $booking->changeRequests->first();
+
+        // 3. Hitung sisa tagihan (Grand Total - Total Verified)
+        $totalPaid = $booking->payments->where('status', 'Verified')->sum('amount');
+        $remainingBill = $booking->grand_total - $totalPaid;
+
         $timeline = $this->getBookingTimeline($booking->status);
-        
-        return view('client.tracking.tracking_show', compact('booking', 'timeline'));
+
+        // 4. Kirim variabel ke View
+        return view('client.tracking.tracking_show', compact(
+            'booking', 
+            'timeline', 
+            'latestChangeRequest',
+            'remainingBill'
+        ));
     }
     
     /**
@@ -50,7 +74,7 @@ class TrackingController extends Controller
             'DP Verified' => 'DP Terverifikasi, Jadwal Diamankan',
             'Photographer Assigned' => 'Fotografer Ditugaskan',
             'Awaiting Final Payment' => 'Menunggu Pembayaran Final',
-            'Pending Final Payment ' => 'Menunggu Verifikasi Final Payment Admin',
+            'Pending Final Payment' => 'Menunggu Verifikasi Final Payment Admin',
             'Fully Paid' => 'Lunas',
             'Shooting Completed' => 'Sesi Foto Selesai',
             'Edits In Progress' => 'Proses Editing',

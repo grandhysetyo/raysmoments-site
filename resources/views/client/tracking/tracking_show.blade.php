@@ -1,467 +1,366 @@
 @extends('layouts.app')
 
 @section('content')
-@php
-    $dpPayment = $booking->payments->where('payment_type', 'DP')->first();
-    $finalPayment = $booking->payments->where('payment_type', 'Final')->first();
-
-    // Menjumlahkan semua payment yang statusnya 'Verified'
-    $totalDibayar = $booking->payments
-                            ->where('status', 'Verified')
-                            ->sum('amount');
-                            
-    // Menghitung sisa tagihan
-    $sisaTagihan = $booking->grand_total - $totalDibayar;
-@endphp
-<div class="max-w-4xl mx-auto p-4 md:p-8 mt-6">
-    <h1 class="text-3xl font-extrabold mb-8 text-gray-900 border-b pb-3">Detail Pelacakan Pesanan</h1>
-    {{-- ========================================================= --}}
-    {{-- BAGIAN 1: STATUS TIMELINE --}}
-    {{-- ========================================================= --}}
-    <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-200">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Status Saat Ini:</h2>
-        
-        {{-- Tampilkan Peringatan jika sedang menunggu approval --}}
-        @if($booking->status === 'Awaiting Change Approval')
-        <div class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50" role="alert">
-            <span class="font-medium">Menunggu Persetujuan Admin!</span> Pengajuan perubahan Anda sedang ditinjau.
-        </div>
-        @endif
-
-        {{-- Timeline (Asumsi variabel $timeline dikirim dari Controller) --}}
-        <ol class="relative border-l border-gray-200 dark:border-gray-700">                  
-            @foreach($timeline as $step)
-            <li class="mb-10 ml-6">
-                {{-- BULLET POINT (Warna ditentukan oleh status) --}}
-                <span class="absolute flex items-center justify-center w-6 h-6 rounded-full -left-3 ring-8 ring-white 
-                    @if($step['is_completed']) bg-green-500 @elseif($step['is_active']) bg-indigo-600 @else bg-gray-300 @endif">
-                    
-                    @if($step['is_completed'])
-                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    @elseif($step['is_active'])
-                        <span class="text-white text-xs font-bold">{{ $loop->iteration }}</span>
-                    @endif
-                </span>
-                
-                {{-- KONTEN TIMELINE --}}
-                <h3 class="flex items-center mb-1 text-lg font-semibold text-gray-900
-                    @if($step['is_active']) text-indigo-600 @endif">
-                    {{ $step['label'] }}
-                </h3>
-                
-                @if($step['is_active'])
-                    <p class="mb-4 text-sm font-normal text-gray-500">
-                        Status Terakhir Diperbarui: {{ $booking->updated_at->isoFormat('D MMMM YYYY, HH:mm') }}
-                    </p>
-                @endif
-            </li>
-            @endforeach
-        </ol>
-
-        @if($booking->status === 'Cancelled')
-            <div class="p-4 bg-red-100 text-red-700 border border-red-400 rounded-lg font-semibold mt-6">
-                Pesanan ini telah dibatalkan.
-            </div>
-        @endif
-    </div>
-    @if(session('success'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative mb-4">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4">
-            {{ session('error') }}
-        </div>
-    @endif
+{{-- CONTAINER: Gunakan max-w-lg agar tampilan fokus seperti Mobile App meskipun di Desktop --}}
+<div class="max-w-lg mx-auto p-4 pb-24">
     
-    {{-- Menampilkan error validasi (PENTING untuk modal upload) --}}
-    @if ($errors->any())
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4">
-            <strong class="font-bold">Oops! Ada kesalahan:</strong>
-            <ul class="mt-2 list-disc list-inside">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
+    {{-- 1. HEADER & STATUS UTAMA --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6 text-center relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-2 bg-indigo-600"></div>
+        
+        <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Kode Pesanan</p>
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight mb-2">{{ $booking->order_code }}</h1>
+        
+        {{-- Badge Status Utama --}}
+        <div class="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold 
+            @if($booking->status == 'Cancelled') bg-red-100 text-red-700
+            @elseif(in_array($booking->status, ['Fully Paid', 'Shooting Completed', 'Project Closed'])) bg-green-100 text-green-700
+            @else bg-indigo-50 text-indigo-700 border border-indigo-100 @endif">
+            
+            <span class="relative flex h-2 w-2 mr-2">
+              @if(!in_array($booking->status, ['Cancelled', 'Project Closed']))
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-current"></span>
+              @endif
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-current"></span>
+            </span>
+            {{ $booking->status }}
+        </div>
+        <p class="text-xs text-gray-400 mt-3">Dipesan: {{ $booking->created_at->format('d M Y') }}</p>
+    </div>
+
+    {{-- ALERT MESSAGES --}}
+    @if(session('success'))
+        <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-r mb-6 shadow-sm text-sm">
+            <p class="font-bold">Berhasil!</p>
+            <p>{{ session('success') }}</p>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r mb-6 shadow-sm text-sm">
+            <p class="font-bold">Error!</p>
+            <p>{{ session('error') }}</p>
+        </div>
+    @endif
+
+    {{-- LOGIKA PENENTUAN FORM (PHP Logic) --}}
+    @php
+        $isUpgradeApproved = isset($latestChangeRequest) && $latestChangeRequest->status == 'Approved';
+        $hasPendingUpgradePayment = $booking->payments->where('payment_type', 'AddOn')->where('amount', $latestChangeRequest->additional_cost ?? 0)->where('status', 'Pending')->isNotEmpty();
+        $paid = $booking->payments->where('status', 'Verified')->sum('amount');
+        $bill = $booking->grand_total - $paid;
+        $status = $booking->status;
+        $dpAmount = $booking->grand_total * 0.5;
+    @endphp
+
+
+    {{-- 2. ACTION AREA (Form Pembayaran) - Prioritas Tertinggi --}}
+    
+    {{-- A. FORM UPGRADE --}}
+    @if($isUpgradeApproved && $latestChangeRequest->additional_cost > 0 && $bill > 0 && !$hasPendingUpgradePayment)
+        <div class="bg-white rounded-2xl shadow-lg border border-green-200 overflow-hidden mb-6 relative transform transition hover:scale-[1.01]">
+            <div class="bg-green-500 text-white px-4 py-2 text-xs font-bold uppercase tracking-wider flex justify-between items-center">
+                <span>Perubahan Disetujui</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <div class="p-6">
+                <h3 class="font-bold text-gray-900 mb-2">Bayar Kekurangan Upgrade</h3>
+                <p class="text-gray-500 text-sm mb-4">Upgrade paket Anda telah disetujui admin.</p>
+                
+                <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg border border-green-100 mb-4">
+                    <span class="text-sm text-gray-600">Nominal</span>
+                    <span class="font-bold text-lg text-green-700">Rp {{ number_format($latestChangeRequest->additional_cost, 0, ',', '.') }}</span>
+                </div>
+
+                <form action="{{ route('payments.store', $booking->order_code) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="payment_type" value="AddOn"> 
+                    <input type="hidden" name="amount" value="{{ $latestChangeRequest->additional_cost }}">
+                    <input type="hidden" name="change_request_id" value="{{ $latestChangeRequest->id }}">
+                    
+                    <label class="block mb-4">
+                        <span class="text-xs font-bold text-gray-700 mb-1 block">Upload Bukti Transfer</span>
+                        <input type="file" name="proof_url" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-200 rounded-lg" required>
+                    </label>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">
+                        Kirim Bukti
+                    </button>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- B. FORM DP --}}
+    @if($status == 'Awaiting DP')
+        <div class="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden mb-6 relative">
+            <div class="bg-indigo-600 text-white px-4 py-2 text-xs font-bold uppercase tracking-wider flex justify-between items-center">
+                <span>Tagihan Aktif</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div class="p-6">
+                <h3 class="font-bold text-gray-900 mb-2">Pembayaran DP (50%)</h3>
+                <p class="text-gray-500 text-sm mb-4">Amankan tanggal acara Anda sekarang.</p>
+                
+                <div class="flex justify-between items-center bg-indigo-50 p-3 rounded-lg border border-indigo-100 mb-4">
+                    <span class="text-sm text-gray-600">Total DP</span>
+                    <span class="font-bold text-lg text-indigo-700">Rp {{ number_format($dpAmount, 0, ',', '.') }}</span>
+                </div>
+
+                <form action="{{ route('payments.store', $booking->order_code) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="payment_type" value="DP"> 
+                    <input type="hidden" name="amount" value="{{ $dpAmount }}">
+                    
+                    <label class="block mb-4">
+                        <span class="text-xs font-bold text-gray-700 mb-1 block">Upload Bukti Transfer</span>
+                        <input type="file" name="proof_url" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-200 rounded-lg" required>
+                    </label>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">
+                        Bayar DP Sekarang
+                    </button>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- C. FORM PELUNASAN --}}
+    @if($status == 'Awaiting Final Payment')
+        <div class="bg-white rounded-2xl shadow-lg border border-blue-200 overflow-hidden mb-6 relative">
+            <div class="bg-blue-600 text-white px-4 py-2 text-xs font-bold uppercase tracking-wider flex justify-between items-center">
+                <span>Tahap Akhir</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div class="p-6">
+                <h3 class="font-bold text-gray-900 mb-2">Pelunasan Tagihan</h3>
+                <p class="text-gray-500 text-sm mb-4">Selesaikan pembayaran untuk memproses foto.</p>
+                
+                <div class="flex justify-between items-center bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
+                    <span class="text-sm text-gray-600">Sisa Tagihan</span>
+                    <span class="font-bold text-lg text-blue-700">Rp {{ number_format($bill, 0, ',', '.') }}</span>
+                </div>
+
+                <form action="{{ route('payments.store', $booking->order_code) }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="payment_type" value="Final"> 
+                    <input type="hidden" name="amount" value="{{ $bill }}">
+                    
+                    <label class="block mb-4">
+                        <span class="text-xs font-bold text-gray-700 mb-1 block">Upload Bukti Transfer</span>
+                        <input type="file" name="proof_url" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-gray-200 rounded-lg" required>
+                    </label>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition">
+                        Lunasi Sekarang
+                    </button>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    {{-- D. ALERT SEDANG DIVERIFIKASI --}}
+    @if($hasPendingUpgradePayment || in_array($status, ['Pending', 'Pending Final Payment']))
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-start shadow-sm">
+            <div class="flex-shrink-0 mt-1">
+                 <svg class="h-5 w-5 text-yellow-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-bold text-yellow-800">Pembayaran Sedang Diverifikasi</h3>
+                <p class="text-xs text-yellow-600 mt-1">Admin sedang mengecek bukti transfer Anda. Mohon tunggu notifikasi selanjutnya.</p>
+            </div>
+        </div>
+    @endif
+
+
+    {{-- 3. TIMELINE (Vertical Minimalis) --}}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Progres Pesanan</h3>
+        <div class="relative pl-2">
+            <div class="absolute left-3.5 top-2 h-[90%] w-0.5 bg-gray-100"></div>
+            <ul class="space-y-5">
+                @foreach($timeline as $step)
+                <li class="relative flex items-center">
+                    <div class="flex-shrink-0 w-3 h-3 rounded-full border-2 border-white shadow-sm z-10 
+                        {{ $step['is_completed'] ? 'bg-green-500' : ($step['is_active'] ? 'bg-indigo-600 ring-4 ring-indigo-50' : 'bg-gray-300') }}">
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-bold {{ $step['is_active'] ? 'text-indigo-700' : ($step['is_completed'] ? 'text-gray-800' : 'text-gray-400') }}">
+                            {{ $step['label'] }}
+                        </p>
+                    </div>
+                </li>
                 @endforeach
             </ul>
         </div>
-    @endif
+    </div>
 
 
-    @if($booking)
-        <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-            
-            {{-- HEADER KODE BOOKING --}}
-            <div class="bg-gray-50 p-6 border-b border-gray-200">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+    {{-- 4. ACCORDION DETAILS (Fitur Kunci UX Mobile) --}}
+    {{-- Menggunakan HTML5 <details> untuk native accordion yang ringan --}}
+    
+    <div class="space-y-3">
+        {{-- Detail 1: Informasi Pemesan --}}
+        <details class="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <summary class="flex justify-between items-center p-4 cursor-pointer bg-gray-50 group-open:bg-white transition list-none">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    <span class="font-bold text-gray-700 text-sm">Data Pemesan</span>
+                </div>
+                <svg class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <div class="p-4 border-t border-gray-100 text-sm space-y-3">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase">Nama</p>
+                    <p class="font-medium text-gray-900">{{ $booking->user->clientDetails->full_name ?? $booking->user->name }}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <h2 class="text-xl font-bold text-gray-800">Pesanan: {{ $booking->order_code }}</h2>
-                        <p class="text-gray-600">Tanggal Pesan: {{ $booking->created_at->format('d F Y') }}</p>
+                        <p class="text-xs text-gray-500 uppercase">WhatsApp</p>
+                        <p class="font-medium text-gray-900">{{ $booking->user->clientDetails->whatsapp_number ?? '-' }}</p>
                     </div>
-                    <div class="mt-4 md:mt-0">
-                        @php
-                            $statusColor = 'bg-gray-500'; // Default
-                            if (in_array($booking->status, ['Awaiting DP', 'Awaiting Final Payment'])) {
-                                $statusColor = 'bg-yellow-500';
-                            } elseif (in_array($booking->status, ['DP Confirmed', 'On Process', 'Pending'])) {
-                                $statusColor = 'bg-blue-500';
-                            } elseif ($booking->status === 'Completed') {
-                                $statusColor = 'bg-green-500';
-                            } elseif ($booking->status === 'Cancelled') {
-                                $statusColor = 'bg-red-500';
-                            }
-                        @endphp
-                        <span class="inline-block px-3 py-1 text-sm font-semibold text-white {{ $statusColor }} rounded-full">
-                            {{ $booking->status }}
-                        </span>
+                    <div>
+                        <p class="text-xs text-gray-500 uppercase">Instagram</p>
+                        <p class="font-medium text-gray-900">{{ $booking->user->clientDetails->instagram ? '@'.$booking->user->clientDetails->instagram : '-' }}</p>
                     </div>
                 </div>
-            </div>
-
-            {{-- DAFTAR TOMBOL AKSI --}}
-            <div class="p-6 border-b border-gray-200 bg-gray-50 flex flex-wrap gap-3">
-                
-                {{-- ========================================================== --}}
-                {{-- TOMBOL UPLOAD BUKTI BAYAR (DIUBAH JADI <button>) --}}
-                {{-- ========================================================== --}}
-                @if($booking->status === 'Awaiting DP' || $booking->status === 'Awaiting Final Payment')
-                    <button type="button" id="openPaymentModalBtn"
-                       class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
-                        Upload Bukti Pembayaran
-                    </button>
-                @endif
-                
-                @if($booking->status !== 'Completed' && $booking->status !== 'Cancelled')
-                    <button type="button" id="openChangeRequestModalBtn"
-                       class="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition duration-150 ease-in-out">
-                        Ajukan Perubahan Jadwal/Paket
-                    </button>
-                @endif
-            </div>
-
-            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {{-- DETAIL KLIEN --}}
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Detail Klien</h3>
-                    <div class="space-y-2 text-sm">
-                        <p><strong class="w-24 inline-block">Nama</strong>: {{ $booking->user->clientDetails->full_name }}</p>
-                        <p><strong class="w-24 inline-block">Email</strong>: {{ $booking->user->email }}</p>
-                        <p><strong class="w-24 inline-block">WhatsApp</strong>: {{ $booking->user->clientDetails->whatsapp_number }}</p>
-                    </div>
-                </div>
-
-                {{-- DETAIL ACARA --}}
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Detail Acara</h3>
-                    <div class="space-y-2 text-sm">
-                        <p><strong class="w-24 inline-block">Tanggal</strong>: {{ \Carbon\Carbon::parse($booking->event_date)->format('d F Y') }}</p>
-                        <p><strong class="w-24 inline-block">Sesi 1</strong>: {{ \Carbon\Carbon::parse($booking->session_1_time)->format('H:i') }}</p>
-                        @if($booking->session_2_time)
-                        <p><strong class="w-24 inline-block">Sesi 2</strong>: {{ \Carbon\Carbon::parse($booking->session_2_time)->format('H:i') }}</p>
-                        @endif
-                        <p><strong class="w-24 inline-block">Lokasi</strong>: {{ $booking->event_location }}</p>
-                        <p><strong class="w-24 inline-block">Kota</strong>: {{ $booking->event_city }}</p>
-                    </div>
+                    <p class="text-xs text-gray-500 uppercase">Email</p>
+                    <p class="font-medium text-gray-900 truncate">{{ $booking->user->email }}</p>
                 </div>
             </div>
+        </details>
 
-            {{-- DETAIL PAKET & ADDONS --}}
-            <div class="p-6 border-t border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Detail Paket</h3>
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-gray-700">{{ $booking->package->name }}</span>
-                    <span class="font-medium text-gray-900">Rp {{ number_format($booking->package_price, 0) }}</span>
+        {{-- Detail 2: Riwayat Pembayaran --}}
+        <details class="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <summary class="flex justify-between items-center p-4 cursor-pointer bg-gray-50 group-open:bg-white transition list-none">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span class="font-bold text-gray-700 text-sm">Riwayat Pembayaran</span>
                 </div>
-
-                @if($booking->bookingAddons->count() > 0)
-                    <h4 class="text-md font-semibold text-gray-700 mt-4 mb-2">Add-ons:</h4>
-                    <ul class="list-disc list-inside space-y-1 text-sm">
-                        @foreach($booking->bookingAddons as $bookingAddon)
-                            <li class="flex justify-between">
-                                <span>{{ $bookingAddon->addon->name }}</span>
-                                <span class="font-medium text-gray-800">+ Rp {{ number_format($bookingAddon->grand_total, 0) }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-            </div>
-
-            {{-- DETAIL PEMBAYARAN --}}
-            <div class="p-6 border-t border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Ringkasan Pembayaran</h3>
-                <div class="space-y-3">
-            
-                    {{-- Grand Total --}}
-                    <div class="flex justify-between items-center text-gray-700">
-                        <span class="text-md">Grand Total:</span>
-                        <span class="text-md font-bold text-gray-900">Rp {{ number_format($booking->grand_total, 0, ',', '.') }}</span>
-                    </div>
-                    
-                    {{-- Total Dibayar (Sudah diperbaiki) --}}
-                    <div class="flex justify-between items-center text-green-600">
-                        <span class="text-md">Total Dibayar:</span>
-                        <span class="text-md font-bold">Rp {{ number_format($totalDibayar, 0, ',', '.') }}</span>
-                    </div>
-                    
-                    {{-- Sisa Tagihan (Sudah diperbaiki) --}}
-                    <div class="flex justify-between items-center text-red-600 border-t pt-3">
-                        <span class="text-lg font-bold">Sisa Tagihan:</span>
-                        <span class="text-lg font-bold">Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</span>
-                    </div>
-                </div>
-
-                <h4 class="text-md font-semibold text-gray-700 mt-6 mb-3">Riwayat Pembayaran:</h4>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th class="text-left p-2">Tanggal</th>
-                                <th class="text-left p-2">Tipe</th>
-                                <th class="text-left p-2">Jumlah</th>
-                                <th class="text-left p-2">Status</th>
-                                <th class="text-left p-2">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @forelse($booking->payments as $payment)
-                            <tr>
-                                <td class="p-2">{{ $payment->created_at->format('d M Y') }}</td>
-                                <td class="p-2">{{ $payment->payment_type }}</td>
-                                <td class="p-2">Rp {{ number_format($payment->amount, 0) }}</td>
-                                <td class="p-2">
-                                    @php
-                                        $paymentStatusColor = 'bg-gray-400';
-                                        if ($payment->status === 'Pending') $paymentStatusColor = 'bg-yellow-400';
-                                        if ($payment->status === 'Verified' || $payment->status === 'Paid') $paymentStatusColor = 'bg-green-400';
-                                        if ($payment->status === 'Rejected') $paymentStatusColor = 'bg-red-400';
-                                    @endphp
-                                    <span class="px-2 py-0.5 text-xs font-medium text-white {{ $paymentStatusColor }} rounded-full">
+                <svg class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <div class="p-4 border-t border-gray-100">
+                @if($booking->payments->isEmpty())
+                    <p class="text-gray-400 text-center text-xs py-2">Belum ada data pembayaran.</p>
+                @else
+                    <div class="space-y-3">
+                        @foreach($booking->payments as $payment)
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                            <div>
+                                <p class="text-xs font-bold text-gray-700">
+                                    {{ $payment->payment_type == 'AddOn' ? 'Upgrade' : $payment->payment_type }}
+                                </p>
+                                <p class="text-[10px] text-gray-500">{{ $payment->created_at->format('d M Y') }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs font-bold text-gray-900">Rp {{ number_format($payment->amount, 0, ',', '.') }}</p>
+                                <div class="flex items-center justify-end mt-1 space-x-2">
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full 
+                                        {{ $payment->status == 'Verified' ? 'bg-green-100 text-green-700' : ($payment->status == 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700') }}">
                                         {{ $payment->status }}
                                     </span>
-                                </td>
-                                <td class="p-2">
                                     @if($payment->proof_url)
-                                        <button type="button" 
-                                                class="open-proof-modal-btn text-indigo-600 hover:text-indigo-900 text-xs font-medium"
-                                                {{-- Kita gunakan asset() helper, pastikan 'storage:link' sudah jalan --}}
-                                                data-image-url="{{ asset('storage/' . $payment->proof_url) }}">
-                                            Lihat Bukti
-                                        </button>
-                                    @else
-                                        <span class="text-gray-400 text-xs">-</span>
+                                        <button onclick="openProofModal('{{ asset('storage/' . $payment->proof_url) }}')" class="text-[10px] font-bold text-indigo-600 underline">Lihat</button>
                                     @endif
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="4" class="p-2 text-center text-gray-500">Belum ada riwayat pembayaran.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </details>
+
+        {{-- Detail 3: Informasi Paket & Biaya --}}
+        <details class="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" open>
+            <summary class="flex justify-between items-center p-4 cursor-pointer bg-gray-50 group-open:bg-white transition list-none">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-indigo-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    <span class="font-bold text-gray-700 text-sm">Detail Paket</span>
                 </div>
-            </div>
-
-        </div>
-    @else
-        <div class="bg-white shadow-lg rounded-xl p-8 border border-gray-200 text-center">
-            <h2 class="text-xl font-bold text-gray-800 mb-2">Pesanan Tidak Ditemukan</h2>
-            <p class="text-gray-600">Kode pesanan yang Anda masukkan tidak valid. Silakan periksa kembali.</p>
-            <a href="{{ route('tracking.index') }}" class="mt-4 inline-block text-indigo-600 hover:text-indigo-800 font-medium">
-                Cari lagi
-            </a>
-        </div>
-    @endif
-</div>
-
-
-{{-- ========================================================== --}}
-{{-- DAFTAR MODAL --}}
-{{-- ========================================================== --}}
-@if($booking)
-    {{-- MODAL 1: Konfirmasi Pengajuan Perubahan --}}
-    <div id="changeRequestModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" style="display: none;">
-        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 m-4">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Konfirmasi Pengajuan Perubahan</h3>
-            <p class="text-gray-600 mb-6">
-                Anda akan diarahkan ke halaman baru untuk mengisi detail perubahan. 
-                Apakah Anda yakin ingin melanjutkan?
-            </p>
-            <div class="flex justify-end space-x-4">
-                <button type="button" id="cancelModalBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                    Batal
-                </button>
-                <a href="{{ route('edit.show', $booking->order_code) }}"
-                   class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium">
-                    Ya, Lanjutkan
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {{-- ========================================================== --}}
-    {{-- MODAL 2: UPLOAD BUKTI PEMBAYARAN (BARU) --}}
-    {{-- ========================================================== --}}
-    <div id="paymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" style="display: none;">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 m-4">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Upload Bukti Pembayaran</h3>
-            
-            {{-- Form ini akan submit ke PaymentController@store --}}
-            <form action="{{ route('payments.store', $booking->order_code) }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                <div class="space-y-4">
-                    
-                    {{-- Tentukan Tipe Pembayaran (DP / Final) secara otomatis --}}
-                    @php
-                        $paymentType = ($booking->status === 'Awaiting DP') ? 'DP' : 'Final';
-                        $minAmount = ($paymentType === 'DP') ? $booking->amount : $sisaTagihan;
-                    @endphp
-                    <input type="hidden" name="payment_type" value="{{ $paymentType }}">
-
-                    <div class="bg-gray-100 p-3 rounded-md text-sm">
-                        Anda akan mengupload bukti untuk: <strong class="text-indigo-600">{{ $paymentType }}</strong>
-                        @if($paymentType == 'DP')
-                        <p>Jumlah DP: Rp {{ number_format($dpPayment->amount ?? 0, 0, ',', '.') }}</p>
-                        @else
-                        <p>Sisa Tagihan: Rp {{ number_format($finalPayment->amount ?? 0, 0, ',', '.') }}</p>
-                        @endif
+                <svg class="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <div class="p-4 border-t border-gray-100 text-sm space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Paket</span>
+                    <span class="font-bold text-indigo-700">{{ $booking->package->name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Lokasi</span>
+                    <span class="text-gray-900 text-right max-w-[60%]">{{ $booking->event_location }}, {{ $booking->event_city }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Tanggal</span>
+                    <span class="text-gray-900">{{ $booking->event_date->format('d M Y') }}</span>
+                </div>
+                
+                <div class="border-t border-dashed border-gray-200 pt-3 mt-2">
+                    <div class="flex justify-between text-gray-600 text-xs mb-1">
+                        <span>Harga Paket</span>
+                        <span>Rp {{ number_format($booking->package_price, 0, ',', '.') }}</span>
+                    </div>
+                    @if($booking->addons_total > 0)
+                    <div class="flex justify-between text-gray-600 text-xs mb-1">
+                        <span>Add-ons</span>
+                        <span>+ Rp {{ number_format($booking->addons_total, 0, ',', '.') }}</span>
+                    </div>
+                    @endif
+                    <div class="flex justify-between font-bold text-gray-900 text-base mt-2">
+                        <span>Grand Total</span>
+                        <span>Rp {{ number_format($booking->grand_total, 0, ',', '.') }}</span>
                     </div>
                     
-                    {{-- Input Jumlah --}}
-                    <div>
-                        <label for="amount" class="block text-sm font-medium text-gray-700">Jumlah yang Ditransfer</label>
-                        <input type="number" name="amount" id="amount" 
-                               value="{{ old('amount', round($minAmount)) }}" 
-                               min="1000"
-                               class="mt-1 w-full border border-gray-300 rounded-md p-2 @error('amount') border-red-500 @enderror" 
-                               required>
-                        @error('amount')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
-                    </div>
-                    
-                    {{-- Input File Gambar --}}
-                    <div>
-                        <label for="proof_url" class="block text-sm font-medium text-gray-700">Bukti Transfer (JPG, PNG)</label>
-                        <input type="file" name="proof_url" id="proof_url" 
-                               accept="image/jpeg,image/png"
-                               class="mt-1 w-full border border-gray-300 rounded-md p-1 file:p-2 file:border-0 file:rounded-md file:bg-gray-100 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 @error('proof_image') border-red-500 @enderror" 
-                               required>
-                        @error('proof_url')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
+                    {{-- Status Bayar Mini --}}
+                    <div class="mt-3 bg-gray-50 rounded p-2 text-xs space-y-1">
+                         @if($paid > 0)
+                            <div class="flex justify-between text-green-600"><span>Sudah Bayar</span><span>- Rp {{ number_format($paid, 0, ',', '.') }}</span></div>
+                         @endif
+                         @if($bill > 0)
+                            <div class="flex justify-between text-red-600 font-bold"><span>Sisa Tagihan</span><span>Rp {{ number_format($bill, 0, ',', '.') }}</span></div>
+                         @else
+                            <div class="text-center text-green-600 font-bold">LUNAS</div>
+                         @endif
                     </div>
                 </div>
                 
-                <div class="flex justify-end space-x-4 mt-6">
-                    <button type="button" id="cancelPaymentModalBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
-                        Batal
-                    </button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">
-                        Upload Bukti
-                    </button>
-                </div>
-            </form>
-        </div>
+                @if(!in_array($booking->status, ['Shooting Completed', 'Project Closed', 'Cancelled']))
+                    <div class="pt-2 text-center">
+                        <a href="{{ route('edit.show', $booking->order_code) }}" class="text-indigo-600 text-xs font-bold hover:underline">
+                            Ajukan Perubahan Paket?
+                        </a>
+                    </div>
+                @endif
+            </div>
+        </details>
     </div>
-    {{-- PERUBAHAN 3: Tambah Modal untuk Lihat Bukti --}}
-    <div id="proofModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75" style="display: none;">
-        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-4 m-4 relative">
-            <button type="button" id="closeProofModalBtn" class="absolute -top-3 -right-3 bg-white rounded-full p-1 shadow-lg text-gray-700 hover:text-black z-10">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-            <div class="w-full max-h-[80vh] overflow-auto">
-                <img id="proofImage" src="" alt="Bukti Pembayaran" class="w-full h-auto">
+
+</div>
+
+{{-- MODAL LIHAT BUKTI --}}
+<div id="proofModal" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="fixed inset-0 bg-black bg-opacity-80 transition-opacity backdrop-blur-sm" onclick="closeProofModal()"></div>
+        <div class="relative bg-white rounded-2xl overflow-hidden shadow-2xl max-w-sm w-full transform transition-all">
+            <div class="p-2 flex justify-end">
+                <button onclick="closeProofModal()" class="bg-gray-100 rounded-full p-1 hover:bg-gray-200 text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-4 pt-0 text-center">
+                <img id="proofImage" src="" alt="Bukti" class="w-full h-auto rounded-lg shadow-sm border border-gray-100">
+                <p class="text-xs text-gray-400 mt-3">Bukti Transfer</p>
             </div>
         </div>
     </div>
-@endif
+</div>
 
-
-{{-- ========================================================== --}}
-{{-- JAVASCRIPT UNTUK KEDUA MODAL --}}
-{{-- ========================================================== --}}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        
-        // --- Modal 1: Konfirmasi Perubahan ---
-        const openChangeBtn = document.getElementById('openChangeRequestModalBtn');
-        const changeModal = document.getElementById('changeRequestModal');
-        const cancelChangeBtn = document.getElementById('cancelModalBtn');
-
-        if (openChangeBtn && changeModal && cancelChangeBtn) {
-            openChangeBtn.addEventListener('click', function() {
-                changeModal.style.display = 'flex';
-            });
-            cancelChangeBtn.addEventListener('click', function() {
-                changeModal.style.display = 'none';
-            });
-            changeModal.addEventListener('click', function(event) {
-                if (event.target === changeModal) {
-                    changeModal.style.display = 'none';
-                }
-            });
-        }
-
-        // --- Modal 2: Upload Pembayaran (BARU) ---
-        const openPaymentBtn = document.getElementById('openPaymentModalBtn');
-        const paymentModal = document.getElementById('paymentModal');
-        const cancelPaymentBtn = document.getElementById('cancelPaymentModalBtn');
-
-        if (openPaymentBtn && paymentModal && cancelPaymentBtn) {
-            openPaymentBtn.addEventListener('click', function() {
-                paymentModal.style.display = 'flex';
-            });
-
-            cancelPaymentBtn.addEventListener('click', function() {
-                paymentModal.style.display = 'none';
-            });
-
-            paymentModal.addEventListener('click', function(event) {
-                if (event.target === paymentModal) {
-                    paymentModal.style.display = 'none';
-                }
-            });
-        }
-
-        // --- PERUBAHAN 4: Tambah JS untuk Modal Bukti ---
-        const proofModal = document.getElementById('proofModal');
-        const proofImage = document.getElementById('proofImage');
-        const closeProofBtn = document.getElementById('closeProofModalBtn');
-        const openProofBtns = document.querySelectorAll('.open-proof-modal-btn');
-
-        if (proofModal && proofImage && closeProofBtn && openProofBtns) {
-            
-            // Logika untuk tombol "Lihat Bukti" (ada banyak)
-            openProofBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const imageUrl = btn.dataset.imageUrl;
-                    if (imageUrl) {
-                        proofImage.src = imageUrl; // Set gambar di modal
-                        proofModal.style.display = 'flex'; // Tampilkan modal
-                    }
-                });
-            });
-
-            // Logika tutup modal
-            const closeProofModal = () => {
-                proofModal.style.display = 'none';
-                proofImage.src = ''; // Kosongkan gambar saat ditutup
-            };
-
-            closeProofBtn.addEventListener('click', closeProofModal);
-            proofModal.addEventListener('click', (event) => {
-                // Hanya tutup jika klik di overlay (latar belakang), bukan di gambar/konten
-                if (event.target === proofModal) {
-                    closeProofModal();
-                }
-            });
-        }
-
-        // Jika ada error validasi, otomatis tampilkan modal payment
-        @if ($errors->has('amount') || $errors->has('proof_url'))
-            if (paymentModal) {
-                paymentModal.style.display = 'flex';
-            }
-        @endif
-
-    });
+    function openProofModal(imageUrl) {
+        const modal = document.getElementById('proofModal');
+        const img = document.getElementById('proofImage');
+        img.src = imageUrl;
+        modal.classList.remove('hidden');
+    }
+    function closeProofModal() {
+        document.getElementById('proofModal').classList.add('hidden');
+    }
 </script>
-
 @endsection
